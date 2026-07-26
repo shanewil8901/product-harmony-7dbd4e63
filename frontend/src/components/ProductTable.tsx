@@ -1,0 +1,162 @@
+import { useMemo } from 'react';
+import type { Product } from '../types/product';
+import { useMasterData } from '../hooks/useMasterData';
+import { ProductBarcode } from './ProductBarcode';
+
+interface Props {
+  products: Product[];
+  loading: boolean;
+  onEdit: (p: Product) => void;
+  onDelete: (id: string) => void;
+}
+
+export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
+  const { uoms, currencies } = useMasterData();
+
+  const uomMap = useMemo(
+    () => Object.fromEntries(uoms.map((u) => [u.id, u.code])),
+    [uoms],
+  );
+  const curMap = useMemo(
+    () => Object.fromEntries(currencies.map((c) => [c.id, c.code])),
+    [currencies],
+  );
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-paper-warm text-ink">
+            <tr className="text-left">
+              <Th>Product code</Th>
+              <Th>Barcode</Th>
+              <Th>Description</Th>
+              <Th align="right">Base qty</Th>
+              <Th align="right">Weight</Th>
+              <Th align="right">Buying</Th>
+              <Th align="right">Selling</Th>
+              <Th align="right">Actions</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-brown-50">
+            {loading && (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-brown-500">
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {!loading && products.length === 0 && (
+              <tr>
+                <td colSpan={8} className="py-12 text-center text-brown-500">
+                  No products yet.
+                </td>
+              </tr>
+            )}
+            {!loading &&
+              products.map((p) => {
+                const baseUom = p.base_uom_id ? uomMap[p.base_uom_id] : '';
+                const weightUom = p.weight_uom_id ? uomMap[p.weight_uom_id] : '';
+                const buyCur = p.buying_currency_id ? curMap[p.buying_currency_id] : '';
+                const sellCur = p.selling_currency_id ? curMap[p.selling_currency_id] : '';
+                return (
+                  <tr key={p.id} className="hover:bg-paper-soft">
+                    <Td>
+                      <span className="font-mono text-ink font-medium">{p.productCode}</span>
+                    </Td>
+                    <Td>
+                      {p.product_barcode ? (
+                        <div className="group relative inline-block">
+                          <span className="font-mono text-brown-500 cursor-help border-b border-dotted border-brown-300">
+                            {p.product_barcode}
+                          </span>
+                          <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden group-hover:block rounded-lg border border-brown-100 bg-white p-2 shadow-lg">
+                            <ProductBarcode value={p.product_barcode} height={50} width={1.5} fontSize={12} />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-mono text-brown-500">—</span>
+                      )}
+                    </Td>
+                    <Td className="max-w-xs truncate" title={p.description}>
+                      {p.description}
+                    </Td>
+                    <Td align="right">
+                      {Number(p.baseQty).toFixed(3)}
+                      {baseUom && <span className="text-brown-500 ml-1">{baseUom}</span>}
+                    </Td>
+                    <Td align="right">
+                      {Number(p.weight).toFixed(3)}
+                      {weightUom && <span className="text-brown-500 ml-1">{weightUom}</span>}
+                    </Td>
+                    <Td align="right" className="text-brown-500">
+                      {Number(p.buyingPrice).toFixed(2)}
+                      {buyCur && <span className="ml-1">{buyCur}</span>}
+                    </Td>
+                    <Td align="right" className="text-forest-500 font-medium">
+                      {Number(p.sellingPrice).toFixed(2)}
+                      {sellCur && <span className="ml-1">{sellCur}</span>}
+                    </Td>
+                    <Td align="right">
+                      <div className="inline-flex gap-2">
+                        <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => onEdit(p)}>
+                          Edit
+                        </button>
+                        <button
+                          className="btn-danger !py-1 !px-2 text-xs"
+                          onClick={() => {
+                            if (confirm(`Delete ${p.productCode}?`)) onDelete(p.id);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Th({
+  children,
+  align = 'left',
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'right';
+}) {
+  return (
+    <th
+      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider ${
+        align === 'right' ? 'text-right' : ''
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align = 'left',
+  className = '',
+  title,
+}: {
+  children: React.ReactNode;
+  align?: 'left' | 'right';
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <td
+      className={`px-4 py-3 ${align === 'right' ? 'text-right' : ''} ${className}`}
+      title={title}
+    >
+      {children}
+    </td>
+  );
+}
