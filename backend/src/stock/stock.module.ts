@@ -7,11 +7,14 @@ import { Product } from '../products/product.entity';
 import { StockDocument } from './stock-document.entity';
 import { StockDocumentsService } from './stock-documents.service';
 import { StockDocumentsController } from './stock-documents.controller';
+import { StockHistory } from './stock-history.entity';
+import { StockHistoryService } from './stock-history.service';
+import { StockHistoryController } from './stock-history.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Stock, Product, StockDocument])],
-  providers: [StockService, StockDocumentsService],
-  controllers: [StockController, StockDocumentsController],
-  exports: [StockDocumentsService],
+  imports: [TypeOrmModule.forFeature([Stock, Product, StockDocument, StockHistory])],
+  providers: [StockService, StockDocumentsService, StockHistoryService],
+  controllers: [StockController, StockDocumentsController, StockHistoryController],
+  exports: [StockDocumentsService, StockHistoryService],
 })
 export class StockModule {}

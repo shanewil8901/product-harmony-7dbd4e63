@@ -8,6 +8,7 @@ import { QueryStockDto } from './dto/query-stock.dto';
 import { Product } from '../products/product.entity';
 import { StockDocumentsService } from './stock-documents.service';
 import type { StockDocument } from './stock-document.entity';
+import { StockHistoryService } from './stock-history.service';
 
 @Injectable()
 export class StockService {
@@ -15,6 +16,7 @@ export class StockService {
     @InjectRepository(Stock) private readonly repo: Repository<Stock>,
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
     private readonly documents: StockDocumentsService,
+    private readonly history: StockHistoryService,
   ) {}
 
   private readonly STOCK_RELATIONS = [
