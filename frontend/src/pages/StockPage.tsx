@@ -8,6 +8,7 @@ import type { Stock, StockInput, StockStatus } from '../types/stock';
 import { STOCK_STATUSES, STOCK_STATUS_LABEL } from '../types/stock';
 import type { Product } from '../types/product';
 import { StockLifecyclePanel, StatusBadge } from '../components/StockLifecyclePanel';
+import { StockHistoryPanel } from '../components/StockHistoryPanel';
 
 const CREATE_ROLES = ['admin', 'manager', 'employee'];
 const DELETE_ROLES = ['admin', 'manager'];
@@ -26,6 +27,7 @@ export function StockPage() {
   const [productFilter, setProductFilter] = useState<string>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [lifecycleFor, setLifecycleFor] = useState<Stock | null>(null);
+  const [historyFor, setHistoryFor] = useState<Stock | null>(null);
 
   const productMap = useMemo(
     () => Object.fromEntries(products.map((p) => [p.id, p])),
@@ -209,6 +211,12 @@ export function StockPage() {
                         >
                           Lifecycle
                         </button>
+                        <button
+                          className="btn-ghost !py-1 !px-2 text-xs"
+                          onClick={() => setHistoryFor(s)}
+                        >
+                          History
+                        </button>
                         {canDelete && (
                           <button
                             className="btn-danger !py-1 !px-2 text-xs"
@@ -257,6 +265,10 @@ export function StockPage() {
             setLifecycleFor(updated);
           }}
         />
+      )}
+
+      {historyFor && (
+        <StockHistoryPanel stock={historyFor} onClose={() => setHistoryFor(null)} />
       )}
     </div>
   );
