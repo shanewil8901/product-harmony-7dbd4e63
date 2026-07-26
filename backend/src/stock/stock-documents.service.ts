@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { ALLOWED_FROM, DOC_TYPE_PREFIX, DOC_TYPE_TO_STATUS } from './lifecycle';
+import { StockHistoryService } from './stock-history.service';
 
 @Injectable()
 export class StockDocumentsService {
@@ -11,6 +12,7 @@ export class StockDocumentsService {
     @InjectRepository(StockDocument) private readonly repo: Repository<StockDocument>,
     @InjectRepository(Stock) private readonly stockRepo: Repository<Stock>,
     private readonly dataSource: DataSource,
+    private readonly history: StockHistoryService,
   ) {}
 
   private async nextDocNumber(docType: StockDocType): Promise<string> {
@@ -75,9 +77,23 @@ export class StockDocumentsService {
       });
       const saved = await mgr.save(doc);
 
-      stock.status = DOC_TYPE_TO_STATUS[docType];
+      const statusFrom = stock.status;
+      const statusTo = DOC_TYPE_TO_STATUS[docType];
+      stock.status = statusTo;
       stock.updated_by = userEmail;
       await mgr.save(stock);
+
+      await this.history.logDocument(
+        stockId,
+        {
+          doc_type: docType,
+          doc_number,
+          status_from: statusFrom,
+          status_to: statusTo,
+        },
+        userEmail,
+        mgr,
+      );
 
       return { document: saved, stock };
     });
