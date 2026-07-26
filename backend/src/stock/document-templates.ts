@@ -78,7 +78,7 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
       else if (p.type === 'minute') minute = p.value.padStart(2, '0');
       else if (p.type === 'dayPeriod') dayPeriod = p.value.toLowerCase().replace(/\./g, '');
     }
-    return `${datePart} at ${hour}:${minute}${dayPeriod} Arabian Standard Time`;
+    return `${datePart} ${hour}:${minute}${dayPeriod}`;
   };
 
   return `<!doctype html>
