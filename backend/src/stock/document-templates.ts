@@ -3,7 +3,7 @@ import type { StockDocument } from './stock-document.entity';
 import type { Stock } from './stock.entity';
 
 function esc(v: unknown): string {
-  if (v === null || v === undefined) return '—';
+  if (v === null || v === undefined || v === '') return '—';
   return String(v)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -14,12 +14,42 @@ function row(k: string, v: unknown) {
   return `<tr><th style="text-align:left;padding:6px 12px;background:#f7f2e7;color:#5a4632;width:220px">${esc(k)}</th><td style="padding:6px 12px">${esc(v)}</td></tr>`;
 }
 
-export function renderDocumentHtml(doc: StockDocument, stock: Stock): string {
+/**
+ * `stock` may be the enriched shape returned by StockService (with flattened
+ * `product_code`, `qty_uom_code`, currency codes, and nested relations).
+ * Fall back to raw IDs only when relations weren't loaded.
+ */
+type EnrichedStock = Stock & {
+  product_code?: string | null;
+  product_description?: string | null;
+  qty_uom_code?: string | null;
+  buying_currency_code?: string | null;
+  buying_currency_symbol?: string | null;
+  selling_currency_code?: string | null;
+  selling_currency_symbol?: string | null;
+};
+
+export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): string {
   const title = DOC_TYPE_LABEL[doc.doc_type];
   const payload = doc.payload ?? {};
   const payloadRows = Object.entries(payload)
     .map(([k, v]) => row(k.replace(/_/g, ' '), v))
     .join('');
+
+  const productLabel = stock.product_code
+    ? `${stock.product_code}${stock.product_description ? ` — ${stock.product_description}` : ''}`
+    : (stock.product?.productCode ?? stock.product_id);
+
+  const qtyUom = stock.qty_uom_code ?? stock.qty_uom?.code ?? '';
+  const buyCur =
+    stock.buying_currency_code ?? stock.buying_currency_snapshot?.code ?? '';
+  const sellCur =
+    stock.selling_currency_code ?? stock.selling_currency_snapshot?.code ?? '';
+
+  const vendorLabel = stock.vendor_name
+    ? stock.vendor_name
+    : (stock.vendor_id ?? '—');
+
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>${esc(doc.doc_number)} — ${esc(title)}</title>
 <style>
@@ -50,12 +80,12 @@ export function renderDocumentHtml(doc: StockDocument, stock: Stock): string {
     </div>
   </div>
   <table>
-    ${row('Product', stock.product_id)}
-    ${row('Vendor', `${stock.vendor_name ?? '—'} (${stock.vendor_id ?? '—'})`)}
+    ${row('Product', productLabel)}
+    ${row('Vendor', vendorLabel)}
     ${row('Batch no.', stock.batch_no)}
-    ${row('Quantity', `${stock.qty} (uom: ${stock.qty_uom_id ?? '—'})`)}
-    ${row('Buying price @ order', `${stock.buying_price_snapshot} ${stock.buying_currency_id_snapshot ?? ''}`)}
-    ${row('Selling price @ order', `${stock.selling_price_snapshot} ${stock.selling_currency_id_snapshot ?? ''}`)}
+    ${row('Quantity', `${Number(stock.qty).toFixed(3)}${qtyUom ? ` ${qtyUom}` : ''}`)}
+    ${row('Buying price @ order', `${Number(stock.buying_price_snapshot).toFixed(2)}${buyCur ? ` ${buyCur}` : ''}`)}
+    ${row('Selling price @ order', `${Number(stock.selling_price_snapshot).toFixed(2)}${sellCur ? ` ${sellCur}` : ''}`)}
     ${row('Manufacture date', stock.manufacture_date)}
     ${row('Expiry date', stock.expiry_date)}
     ${row('Ordered at', stock.ordered_at)}

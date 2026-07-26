@@ -17,10 +17,37 @@ export class StockService {
     private readonly documents: StockDocumentsService,
   ) {}
 
+  private readonly STOCK_RELATIONS = [
+    'product',
+    'qty_uom',
+    'buying_currency_snapshot',
+    'selling_currency_snapshot',
+  ];
+
+  private enrich<T extends Stock>(s: T) {
+    return {
+      ...s,
+      product_code: s.product?.productCode ?? null,
+      product_description: s.product?.description ?? null,
+      qty_uom_code: s.qty_uom?.code ?? null,
+      qty_uom_name: s.qty_uom?.name ?? null,
+      buying_currency_code: s.buying_currency_snapshot?.code ?? null,
+      buying_currency_symbol: s.buying_currency_snapshot?.symbol ?? null,
+      selling_currency_code: s.selling_currency_snapshot?.code ?? null,
+      selling_currency_symbol: s.selling_currency_snapshot?.symbol ?? null,
+    };
+  }
+
   async findAll(q: QueryStockDto) {
     const page = q.page ?? 1;
     const limit = q.limit ?? 20;
-    const qb = this.repo.createQueryBuilder('s').where('s.deleted_at IS NULL');
+    const qb = this.repo
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.product', 'product')
+      .leftJoinAndSelect('s.qty_uom', 'qty_uom')
+      .leftJoinAndSelect('s.buying_currency_snapshot', 'buying_currency_snapshot')
+      .leftJoinAndSelect('s.selling_currency_snapshot', 'selling_currency_snapshot')
+      .where('s.deleted_at IS NULL');
 
     if (q.product_id) qb.andWhere('s.product_id = :pid', { pid: q.product_id });
     if (q.status) qb.andWhere('s.status = :st', { st: q.status });
@@ -37,14 +64,17 @@ export class StockService {
     }
 
     qb.orderBy('s.created_at', 'DESC').skip((page - 1) * limit).take(limit);
-    const [items, total] = await qb.getManyAndCount();
-    return { items, total, page, limit };
+    const [rows, total] = await qb.getManyAndCount();
+    return { items: rows.map((r) => this.enrich(r)), total, page, limit };
   }
 
   async findOne(id: string) {
-    const s = await this.repo.findOne({ where: { id } });
+    const s = await this.repo.findOne({
+      where: { id },
+      relations: this.STOCK_RELATIONS,
+    });
     if (!s) throw new NotFoundException(`Stock ${id} not found`);
-    return s;
+    return this.enrich(s);
   }
 
   async create(

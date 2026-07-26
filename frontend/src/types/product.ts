@@ -12,6 +12,17 @@ export interface Product {
   weight_uom_id: string | null;
   buying_currency_id: string | null;
   selling_currency_id: string | null;
+  // Enriched by backend joins — safe to render directly.
+  department_code?: string | null;
+  department_name?: string | null;
+  base_uom_code?: string | null;
+  base_uom_name?: string | null;
+  weight_uom_code?: string | null;
+  weight_uom_name?: string | null;
+  buying_currency_code?: string | null;
+  buying_currency_symbol?: string | null;
+  selling_currency_code?: string | null;
+  selling_currency_symbol?: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;

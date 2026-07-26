@@ -38,10 +38,41 @@ export class ProductsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  private readonly PRODUCT_RELATIONS = [
+    'department',
+    'base_uom',
+    'weight_uom',
+    'buying_currency',
+    'selling_currency',
+  ];
+
+  private enrich<T extends Product>(p: T) {
+    return {
+      ...p,
+      department_code: p.department?.code ?? null,
+      department_name: p.department?.name ?? null,
+      base_uom_code: p.base_uom?.code ?? null,
+      base_uom_name: p.base_uom?.name ?? null,
+      weight_uom_code: p.weight_uom?.code ?? null,
+      weight_uom_name: p.weight_uom?.name ?? null,
+      buying_currency_code: p.buying_currency?.code ?? null,
+      buying_currency_symbol: p.buying_currency?.symbol ?? null,
+      selling_currency_code: p.selling_currency?.code ?? null,
+      selling_currency_symbol: p.selling_currency?.symbol ?? null,
+    };
+  }
+
   async findAll(q: QueryProductDto) {
     const page = q.page ?? 1;
     const limit = q.limit ?? 20;
-    const qb = this.repo.createQueryBuilder('p').where('p.deleted_at IS NULL');
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.department', 'department')
+      .leftJoinAndSelect('p.base_uom', 'base_uom')
+      .leftJoinAndSelect('p.weight_uom', 'weight_uom')
+      .leftJoinAndSelect('p.buying_currency', 'buying_currency')
+      .leftJoinAndSelect('p.selling_currency', 'selling_currency')
+      .where('p.deleted_at IS NULL');
 
     if (q.search && q.search.trim()) {
       const term = `%${q.search.trim()}%`;
@@ -55,14 +86,17 @@ export class ProductsService {
     }
 
     qb.orderBy('p.created_at', 'DESC').skip((page - 1) * limit).take(limit);
-    const [items, total] = await qb.getManyAndCount();
-    return { items, total, page, limit };
+    const [rows, total] = await qb.getManyAndCount();
+    return { items: rows.map((r) => this.enrich(r)), total, page, limit };
   }
 
   async findOne(id: string) {
-    const product = await this.repo.findOne({ where: { id } });
+    const product = await this.repo.findOne({
+      where: { id },
+      relations: this.PRODUCT_RELATIONS,
+    });
     if (!product) throw new NotFoundException(`Product ${id} not found`);
-    return product;
+    return this.enrich(product);
   }
 
   async findHistory(productId: string) {
