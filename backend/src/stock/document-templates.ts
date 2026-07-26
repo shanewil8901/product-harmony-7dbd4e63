@@ -50,6 +50,37 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
     ? stock.vendor_name
     : (stock.vendor_id ?? '—');
 
+  // Human-friendly stock reference: product code + batch (fallbacks preserved).
+  const stockReference = stock.product_code
+    ? `${stock.product_code}${stock.batch_no ? ` · Batch ${stock.batch_no}` : ''}`
+    : (stock.product?.productCode ?? '—');
+
+  // Format: "01 Jan 2026 at 01:00pm Arabian Standard Time"
+  const formatGeneratedAt = (d: Date): string => {
+    const tz = 'Asia/Riyadh'; // Arabian Standard Time (UTC+3, no DST)
+    const datePart = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(d);
+    const timeParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).formatToParts(d);
+    let hour = '12';
+    let minute = '00';
+    let dayPeriod = 'am';
+    for (const p of timeParts) {
+      if (p.type === 'hour') hour = p.value.padStart(2, '0');
+      else if (p.type === 'minute') minute = p.value.padStart(2, '0');
+      else if (p.type === 'dayPeriod') dayPeriod = p.value.toLowerCase().replace(/\./g, '');
+    }
+    return `${datePart} at ${hour}:${minute}${dayPeriod} Arabian Standard Time`;
+  };
+
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>${esc(doc.doc_number)} — ${esc(title)}</title>
 <style>
@@ -69,12 +100,12 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
     <div>
       <div class="badge">${esc(title)}</div>
       <h1>${esc(doc.doc_number)}</h1>
-      <div class="muted">Generated ${esc(new Date(doc.generated_at).toISOString().slice(0,19).replace('T',' '))} UTC</div>
+      <div class="muted">Generated ${esc(formatGeneratedAt(new Date(doc.generated_at)))}</div>
       <div class="muted">By ${esc(doc.generated_by ?? '—')}</div>
     </div>
     <div style="text-align:right">
       <div class="muted">Stock reference</div>
-      <div style="font-family:monospace">${esc(stock.id)}</div>
+      <div>${esc(stockReference)}</div>
       <div class="muted" style="margin-top:8px">Current status</div>
       <div><b>${esc(stock.status)}</b></div>
     </div>
@@ -94,3 +125,4 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
   <div class="actions"><button onclick="window.print()">Print</button></div>
 </body></html>`;
 }
+
