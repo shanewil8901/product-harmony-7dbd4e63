@@ -77,9 +77,23 @@ export class StockDocumentsService {
       });
       const saved = await mgr.save(doc);
 
-      stock.status = DOC_TYPE_TO_STATUS[docType];
+      const statusFrom = stock.status;
+      const statusTo = DOC_TYPE_TO_STATUS[docType];
+      stock.status = statusTo;
       stock.updated_by = userEmail;
       await mgr.save(stock);
+
+      await this.history.logDocument(
+        stockId,
+        {
+          doc_type: docType,
+          doc_number,
+          status_from: statusFrom,
+          status_to: statusTo,
+        },
+        userEmail,
+        mgr,
+      );
 
       return { document: saved, stock };
     });
