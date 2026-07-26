@@ -21,6 +21,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    // Silence known browser/devtool probe noise (Chrome DevTools, favicon, etc.)
+    const url: string = req.url ?? '';
+    const isBrowserProbe =
+      status === 404 &&
+      (url.startsWith('/.well-known/') ||
+        url === '/favicon.ico' ||
+        url === '/robots.txt');
+
     const payload =
       exception instanceof HttpException
         ? exception.getResponse()
@@ -31,7 +39,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? payload
         : (payload as { message?: string | string[] }).message ?? 'Error';
 
-    this.logger.error(`${req.method} ${req.url} → ${status}`, exception as Error);
+    if (!isBrowserProbe) {
+      this.logger.error(`${req.method} ${req.url} → ${status}`, exception as Error);
+    }
+
+    if (isBrowserProbe) {
+      res.status(204).end();
+      return;
+    }
 
     res.status(status).json({
       success: false,
