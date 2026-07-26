@@ -154,21 +154,29 @@ export function StockPage() {
               )}
               {!loading && items.map((s) => {
                 const p = productMap[s.product_id];
-                const uom = s.qty_uom_id ? uomMap[s.qty_uom_id] : '';
-                const buyCur = s.buying_currency_id_snapshot
-                  ? curMap[s.buying_currency_id_snapshot]
-                  : '';
-                const sellCur = s.selling_currency_id_snapshot
-                  ? curMap[s.selling_currency_id_snapshot]
-                  : '';
+                // Prefer backend-enriched values; fall back to client-side maps.
+                const productCode = s.product_code ?? p?.productCode ?? s.product_id.slice(0, 8);
+                const productDesc = s.product_description ?? p?.description ?? '';
+                const uom =
+                  s.qty_uom_code ?? (s.qty_uom_id ? uomMap[s.qty_uom_id] : '');
+                const buyCur =
+                  s.buying_currency_code ??
+                  (s.buying_currency_id_snapshot
+                    ? curMap[s.buying_currency_id_snapshot]
+                    : '');
+                const sellCur =
+                  s.selling_currency_code ??
+                  (s.selling_currency_id_snapshot
+                    ? curMap[s.selling_currency_id_snapshot]
+                    : '');
                 return (
                   <tr key={s.id} className="hover:bg-paper-soft">
                     <Td>
                       <div className="font-mono text-ink font-medium">
-                        {p?.productCode ?? s.product_id.slice(0, 8)}
+                        {productCode}
                       </div>
                       <div className="text-xs text-brown-500 truncate max-w-[220px]">
-                        {p?.description}
+                        {productDesc}
                       </div>
                     </Td>
                     <Td>

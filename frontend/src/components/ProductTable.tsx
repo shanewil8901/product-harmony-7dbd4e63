@@ -31,6 +31,7 @@ export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
               <Th>Product code</Th>
               <Th>Barcode</Th>
               <Th>Description</Th>
+              <Th>Department</Th>
               <Th align="right">Base qty</Th>
               <Th align="right">Weight</Th>
               <Th align="right">Buying</Th>
@@ -41,24 +42,32 @@ export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
           <tbody className="divide-y divide-brown-50">
             {loading && (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-brown-500">
+                <td colSpan={9} className="py-8 text-center text-brown-500">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && products.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-brown-500">
+                <td colSpan={9} className="py-12 text-center text-brown-500">
                   No products yet.
                 </td>
               </tr>
             )}
             {!loading &&
               products.map((p) => {
-                const baseUom = p.base_uom_id ? uomMap[p.base_uom_id] : '';
-                const weightUom = p.weight_uom_id ? uomMap[p.weight_uom_id] : '';
-                const buyCur = p.buying_currency_id ? curMap[p.buying_currency_id] : '';
-                const sellCur = p.selling_currency_id ? curMap[p.selling_currency_id] : '';
+                // Prefer backend-enriched codes; fall back to master-data lookup.
+                const baseUom = p.base_uom_code ?? (p.base_uom_id ? uomMap[p.base_uom_id] : '');
+                const weightUom =
+                  p.weight_uom_code ?? (p.weight_uom_id ? uomMap[p.weight_uom_id] : '');
+                const buyCur =
+                  p.buying_currency_code ??
+                  (p.buying_currency_id ? curMap[p.buying_currency_id] : '');
+                const sellCur =
+                  p.selling_currency_code ??
+                  (p.selling_currency_id ? curMap[p.selling_currency_id] : '');
+                const deptLabel =
+                  p.department_name ?? p.department_code ?? '—';
                 return (
                   <tr key={p.id} className="hover:bg-paper-soft">
                     <Td>
@@ -80,6 +89,9 @@ export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
                     </Td>
                     <Td className="max-w-xs truncate" title={p.description}>
                       {p.description}
+                    </Td>
+                    <Td>
+                      <span className="text-brown-600">{deptLabel}</span>
                     </Td>
                     <Td align="right">
                       {Number(p.baseQty).toFixed(3)}

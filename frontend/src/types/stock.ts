@@ -46,6 +46,15 @@ export interface Stock {
   ordered_at: string | null;
   status: StockStatus;
   notes: string | null;
+  // Enriched by backend joins — safe to render directly.
+  product_code?: string | null;
+  product_description?: string | null;
+  qty_uom_code?: string | null;
+  qty_uom_name?: string | null;
+  buying_currency_code?: string | null;
+  buying_currency_symbol?: string | null;
+  selling_currency_code?: string | null;
+  selling_currency_symbol?: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;
