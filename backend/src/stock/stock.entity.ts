@@ -4,9 +4,14 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Product } from '../products/product.entity';
+import { Uom } from '../master-data/uom.entity';
+import { Currency } from '../master-data/currency.entity';
 
 export type StockStatus =
   | 'ordered'
@@ -36,6 +41,10 @@ export class Stock {
   @Column({ name: 'product_id', type: 'varchar', length: 36 })
   product_id!: string;
 
+  @ManyToOne(() => Product, { nullable: true })
+  @JoinColumn({ name: 'product_id' })
+  product?: Product | null;
+
   /** Vendor module isn't built yet — free-text placeholder (e.g. "TBD"). */
   @Column({ name: 'vendor_id', type: 'varchar', length: 36, nullable: true })
   vendor_id!: string | null;
@@ -52,6 +61,10 @@ export class Stock {
   @Column({ name: 'qty_uom_id', type: 'varchar', length: 36, nullable: true })
   qty_uom_id!: string | null;
 
+  @ManyToOne(() => Uom, { nullable: true })
+  @JoinColumn({ name: 'qty_uom_id' })
+  qty_uom?: Uom | null;
+
   // --- Snapshot of the product's buy/sell values at the time this order was placed ---
   @Column({ name: 'buying_price_snapshot', type: 'decimal', precision: 10, scale: 2 })
   buying_price_snapshot!: string;
@@ -59,11 +72,19 @@ export class Stock {
   @Column({ name: 'buying_currency_id_snapshot', type: 'varchar', length: 36, nullable: true })
   buying_currency_id_snapshot!: string | null;
 
+  @ManyToOne(() => Currency, { nullable: true })
+  @JoinColumn({ name: 'buying_currency_id_snapshot' })
+  buying_currency_snapshot?: Currency | null;
+
   @Column({ name: 'selling_price_snapshot', type: 'decimal', precision: 10, scale: 2 })
   selling_price_snapshot!: string;
 
   @Column({ name: 'selling_currency_id_snapshot', type: 'varchar', length: 36, nullable: true })
   selling_currency_id_snapshot!: string | null;
+
+  @ManyToOne(() => Currency, { nullable: true })
+  @JoinColumn({ name: 'selling_currency_id_snapshot' })
+  selling_currency_snapshot?: Currency | null;
 
   @Column({ name: 'manufacture_date', type: 'date', nullable: true })
   manufacture_date!: string | null;

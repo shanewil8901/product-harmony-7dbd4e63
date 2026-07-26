@@ -15,12 +15,10 @@ import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StockDocumentsService } from './stock-documents.service';
+import { StockService } from './stock.service';
 import { CreateStockDocumentDto } from './dto/create-stock-document.dto';
 import { renderDocumentHtml } from './document-templates';
 import { canRunStage } from './lifecycle';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Stock } from './stock.entity';
 import type { RoleCode } from '../master-data/role.entity';
 
 interface AuthedRequest {
@@ -32,7 +30,7 @@ interface AuthedRequest {
 export class StockDocumentsController {
   constructor(
     private readonly service: StockDocumentsService,
-    @InjectRepository(Stock) private readonly stockRepo: Repository<Stock>,
+    private readonly stockService: StockService,
   ) {}
 
   @ApiBearerAuth()
@@ -68,11 +66,11 @@ export class StockDocumentsController {
   @Header('Content-Type', 'text/html; charset=utf-8')
   async render(@Param('docId', new ParseUUIDPipe()) docId: string, @Res() res: Response) {
     const doc = await this.service.findOne(docId);
-    const stock = await this.stockRepo.findOne({ where: { id: doc.stock_id } });
-    if (!stock) {
+    try {
+      const stock = await this.stockService.findOne(doc.stock_id);
+      res.send(renderDocumentHtml(doc, stock as never));
+    } catch {
       res.status(404).send('Stock not found');
-      return;
     }
-    res.send(renderDocumentHtml(doc, stock));
   }
 }
