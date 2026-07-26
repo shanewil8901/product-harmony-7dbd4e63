@@ -109,6 +109,7 @@ export class StockService {
       updated_by: userEmail,
     });
     const saved = await this.repo.save(entity);
+    await this.history.logCreate(saved, userEmail);
 
     // Auto-generate the Purchase Order document for the new stock row.
     const { document } = await this.documents.createForStock(
@@ -124,13 +125,16 @@ export class StockService {
 
   async update(id: string, dto: UpdateStockDto, userEmail: string) {
     const s = await this.findOne(id);
+    const before: Partial<Stock> = { ...s };
     // Status is document-driven — strip it if a client sends it anyway.
     const { qty, ordered_at, ...rest } = dto;
     delete (rest as Record<string, unknown>).status;
     Object.assign(s, rest, { updated_by: userEmail });
     if (qty !== undefined) s.qty = qty.toFixed(3);
     if (ordered_at !== undefined) s.ordered_at = ordered_at ? new Date(ordered_at) : null;
-    return this.repo.save(s);
+    const saved = await this.repo.save(s);
+    await this.history.logUpdate(id, before, saved, userEmail);
+    return saved;
   }
 
   async remove(id: string, userEmail: string) {
@@ -138,6 +142,7 @@ export class StockService {
     s.deleted_by = userEmail;
     await this.repo.save(s);
     await this.repo.softRemove(s);
+    await this.history.logDelete(s, userEmail);
     return { id, deleted: true };
   }
 }
