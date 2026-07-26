@@ -34,7 +34,22 @@ export class StockDocumentsService {
   }
 
   async listForStock(stockId: string) {
-    return this.repo.find({ where: { stock_id: stockId }, order: { generated_at: 'ASC' } });
+    const docs = await this.repo.find({ where: { stock_id: stockId } });
+    // Latest lifecycle stage first (cancellation/write-off, then sales_invoice → po).
+    const rank: Record<StockDocType, number> = {
+      po: 1,
+      dispatch: 2,
+      grn: 3,
+      putaway: 4,
+      sales_invoice: 5,
+      write_off: 6,
+      cancellation: 7,
+    };
+    return docs.sort((a, b) => {
+      const diff = (rank[b.doc_type] ?? 0) - (rank[a.doc_type] ?? 0);
+      if (diff !== 0) return diff;
+      return new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime();
+    });
   }
 
   async findOne(id: string) {
@@ -57,6 +72,16 @@ export class StockDocumentsService {
     return this.dataSource.transaction(async (mgr) => {
       const stock = await mgr.findOne(Stock, { where: { id: stockId } });
       if (!stock) throw new NotFoundException('Stock not found');
+
+      // Prevent duplicates: each doc_type may only be generated once per stock row.
+      const existing = await mgr.findOne(StockDocument, {
+        where: { stock_id: stockId, doc_type: docType },
+      });
+      if (existing) {
+        throw new BadRequestException(
+          `A ${docType} document (${existing.doc_number}) has already been generated for this stock.`,
+        );
+      }
 
       if (!opts.skipTransitionCheck) {
         const allowed = ALLOWED_FROM[docType];
