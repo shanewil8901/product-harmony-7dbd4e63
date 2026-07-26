@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { ALLOWED_FROM, DOC_TYPE_PREFIX, DOC_TYPE_TO_STATUS } from './lifecycle';
+import { StockHistoryService } from './stock-history.service';
 
 @Injectable()
 export class StockDocumentsService {
@@ -11,6 +12,7 @@ export class StockDocumentsService {
     @InjectRepository(StockDocument) private readonly repo: Repository<StockDocument>,
     @InjectRepository(Stock) private readonly stockRepo: Repository<Stock>,
     private readonly dataSource: DataSource,
+    private readonly history: StockHistoryService,
   ) {}
 
   private async nextDocNumber(docType: StockDocType): Promise<string> {
