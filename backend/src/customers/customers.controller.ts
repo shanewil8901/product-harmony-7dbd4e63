@@ -108,7 +108,8 @@ export class CustomersController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: async (req, _file, cb) => {
-          const dir = path.resolve(process.cwd(), 'uploads', 'customers', req.params.id);
+          const customerId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+          const dir = path.resolve(process.cwd(), 'uploads', 'customers', customerId);
           await fs.mkdir(dir, { recursive: true });
           cb(null, dir);
         },

@@ -105,9 +105,10 @@ export class VendorsController {
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
+        storage: diskStorage({
         destination: async (req, _file, cb) => {
-          const dir = path.resolve(process.cwd(), 'uploads', 'vendors', req.params.id);
+          const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+          const dir = path.resolve(process.cwd(), 'uploads', 'vendors', idParam as string);
           await fs.mkdir(dir, { recursive: true });
           cb(null, dir);
         },
