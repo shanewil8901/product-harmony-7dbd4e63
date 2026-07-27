@@ -18,6 +18,8 @@ export function DashboardLayout() {
           <nav className="flex items-center gap-1">
             <NavItem to="/products">Products</NavItem>
             <NavItem to="/stock">Stock</NavItem>
+            <NavItem to="/vendors">Vendors</NavItem>
+            <NavItem to="/customers">Customers</NavItem>
             <NavItem to="/history">History</NavItem>
             {(user?.role?.code === 'admin' || user?.role?.code === 'manager') && (
               <NavItem to="/users">Users</NavItem>

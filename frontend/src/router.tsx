@@ -5,6 +5,8 @@ import { ProductsPage } from './pages/ProductsPage';
 import { UsersPage } from './pages/UsersPage';
 import { StockPage } from './pages/StockPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { VendorsPage } from './pages/VendorsPage';
+import { CustomersPage } from './pages/CustomersPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRoute } from './components/RoleRoute';
 
@@ -21,6 +23,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/products" replace /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'stock', element: <StockPage /> },
+      { path: 'vendors', element: <VendorsPage /> },
+      { path: 'customers', element: <CustomersPage /> },
       { path: 'history', element: <HistoryPage /> },
       {
         path: 'users',
