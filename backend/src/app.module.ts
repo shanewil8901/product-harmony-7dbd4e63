@@ -7,6 +7,10 @@ import { UsersModule } from './users/users.module';
 import { MasterDataModule } from './master-data/master-data.module';
 import { BarcodesModule } from './barcodes/barcodes.module';
 import { StockModule } from './stock/stock.module';
+import { VendorsModule } from './vendors/vendors.module';
+import { CustomersModule } from './customers/customers.module';
+
+
 
 @Module({
   imports: [
@@ -31,6 +35,8 @@ import { StockModule } from './stock/stock.module';
     BarcodesModule,
     ProductsModule,
     StockModule,
+    VendorsModule,
+    CustomersModule,
   ],
 })
 export class AppModule {}
