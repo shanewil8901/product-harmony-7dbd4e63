@@ -8,9 +8,18 @@ interface Props {
   loading: boolean;
   onEdit: (p: Product) => void;
   onDelete: (id: string) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
+export function ProductTable({
+  products,
+  loading,
+  onEdit,
+  onDelete,
+  canEdit = true,
+  canDelete = true,
+}: Props) {
   const { uoms, currencies } = useMasterData();
 
   const uomMap = useMemo(
@@ -25,7 +34,7 @@ export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[900px]">
           <thead className="bg-paper-warm text-ink">
             <tr className="text-left">
               <Th>Product code</Th>
@@ -111,17 +120,25 @@ export function ProductTable({ products, loading, onEdit, onDelete }: Props) {
                     </Td>
                     <Td align="right">
                       <div className="inline-flex gap-2">
-                        <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => onEdit(p)}>
-                          Edit
-                        </button>
-                        <button
-                          className="btn-danger !py-1 !px-2 text-xs"
-                          onClick={() => {
-                            if (confirm(`Delete ${p.productCode}?`)) onDelete(p.id);
-                          }}
-                        >
-                          Delete
-                        </button>
+                        {canEdit ? (
+                          <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => onEdit(p)}>
+                            Edit
+                          </button>
+                        ) : (
+                          <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => onEdit(p)}>
+                            View
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            className="btn-danger !py-1 !px-2 text-xs"
+                            onClick={() => {
+                              if (confirm(`Delete ${p.productCode}?`)) onDelete(p.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </Td>
                   </tr>
