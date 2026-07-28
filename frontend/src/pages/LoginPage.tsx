@@ -1,24 +1,43 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import type { ApiError } from '../services/api';
+import { EMAIL_RE, HELP } from '../lib/validators';
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
+
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!email.trim()) e.email = 'Required';
+    else if (!EMAIL_RE.test(email)) e.email = 'Enter a valid email address';
+    if (!password) e.password = 'Required';
+    else if (password.length < 6) e.password = 'At least 6 characters';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
+    if (!validate()) return;
+    setErrors({});
     setLoading(true);
     try {
       await login(email, password);
       navigate('/products');
-    } catch {
-      setError('Invalid credentials');
+    } catch (err: unknown) {
+      const apiErr = err as ApiError;
+      const status = apiErr.response?.status;
+      const message =
+        status === 401
+          ? 'Invalid email or password'
+          : apiErr.userMessage ?? 'Unable to sign in. Please try again.';
+      setErrors({ ...apiErr.fieldErrors, form: message });
     } finally {
       setLoading(false);
     }
@@ -44,47 +63,62 @@ export function LoginPage() {
         <div className="text-xs text-paper/50">© {new Date().getFullYear()} Product Manager</div>
       </div>
 
-      <div className="flex items-center justify-center p-8">
-        <form onSubmit={onSubmit} className="card w-full max-w-md p-8">
+      <div className="flex items-center justify-center p-4 sm:p-8">
+        <form onSubmit={onSubmit} noValidate className="card w-full max-w-md p-6 sm:p-8">
           <h2 className="text-2xl text-ink">Sign in</h2>
           <p className="text-sm text-brown-500 mt-1">Welcome back.</p>
 
-          {error && (
-            <div className="mt-6 rounded-lg border border-brown-200 bg-brown-50 px-3 py-2 text-sm text-brown-600">
-              {error}
+          {errors.form && (
+            <div
+              role="alert"
+              className="mt-6 rounded-lg border border-brown-300 bg-brown-50 px-3 py-2 text-sm text-brown-700"
+            >
+              {errors.form}
             </div>
           )}
 
           <div className="mt-6 space-y-4">
             <div>
-              <label className="label">Email</label>
+              <label className="label" htmlFor="login-email">
+                Email
+              </label>
               <input
-                className="input"
+                id="login-email"
+                className={`input ${errors.email ? 'border-brown-400 focus:ring-brown-300' : ''}`}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
                 autoComplete="email"
+                aria-invalid={!!errors.email}
+                aria-describedby="login-email-help"
               />
+              <p id="login-email-help" className="mt-1 text-xs text-brown-500">
+                {errors.email ?? HELP.EMAIL}
+              </p>
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label" htmlFor="login-password">
+                Password
+              </label>
               <input
-                className="input"
+                id="login-password"
+                className={`input ${errors.password ? 'border-brown-400 focus:ring-brown-300' : ''}`}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
                 autoComplete="current-password"
+                aria-invalid={!!errors.password}
+                aria-describedby="login-pw-help"
               />
+              <p id="login-pw-help" className="mt-1 text-xs text-brown-500">
+                {errors.password ?? HELP.PASSWORD}
+              </p>
             </div>
           </div>
 
           <button type="submit" className="btn-gold w-full mt-6" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
-
         </form>
       </div>
     </div>
