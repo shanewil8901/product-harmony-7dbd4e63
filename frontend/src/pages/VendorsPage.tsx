@@ -97,7 +97,8 @@ export function VendorsPage() {
         <div className="card p-6 text-sm text-brown-600">{error}</div>
       ) : (
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
             <thead className="bg-paper-warm text-left text-xs uppercase tracking-wide text-brown-500">
               <tr>
                 <th className="px-4 py-3">Code</th>
@@ -171,6 +172,7 @@ export function VendorsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
