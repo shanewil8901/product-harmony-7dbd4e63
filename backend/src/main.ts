@@ -15,6 +15,7 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      errorHttpStatusCode: 422,
       transformOptions: { enableImplicitConversion: true },
     }),
   );

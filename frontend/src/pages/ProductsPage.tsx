@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useProducts } from '../hooks/useProducts';
 import { ProductTable } from '../components/ProductTable';
 import { ProductModal } from '../components/ProductModal';
+import { usePermissions } from '../hooks/usePermissions';
 import type { Product } from '../types/product';
 
 export function ProductsPage() {
+  const { canWriteProducts, canDeleteProducts } = usePermissions();
   const {
     data,
     loading,
@@ -42,9 +44,11 @@ export function ProductsPage() {
             {total} {total === 1 ? 'item' : 'items'} in your catalog
           </p>
         </div>
-        <button className="btn-gold" onClick={openCreate}>
-          + New product
-        </button>
+        {canWriteProducts && (
+          <button className="btn-gold" onClick={openCreate}>
+            + New product
+          </button>
+        )}
       </div>
 
       <div className="card p-4">
@@ -75,6 +79,8 @@ export function ProductsPage() {
         loading={loading}
         onEdit={openEdit}
         onDelete={remove}
+        canEdit={canWriteProducts}
+        canDelete={canDeleteProducts}
       />
 
       <div className="flex items-center justify-between">

@@ -23,14 +23,17 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { Product } from './product.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import type { RoleCode } from '../master-data/role.entity';
 
 interface AuthedRequest {
-  user: { id: string; email: string; name: string };
+  user: { id: string; email: string; name: string; role: RoleCode | null };
 }
 
 @ApiTags('products')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly service: ProductsService) {}
@@ -56,12 +59,14 @@ export class ProductsController {
 
 
   @Post()
+  @Roles('admin', 'manager', 'sales')
   @ApiOkResponse({ type: Product })
   create(@Body() dto: CreateProductDto, @Req() req: AuthedRequest) {
     return this.service.create(dto, req.user.email);
   }
 
   @Patch(':id')
+  @Roles('admin', 'manager', 'sales')
   @ApiOkResponse({ type: Product })
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -72,6 +77,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'manager')
   remove(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: AuthedRequest) {
     return this.service.remove(id, req.user.email);
   }
