@@ -14,6 +14,8 @@ import {
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { StockDocumentsService } from './stock-documents.service';
 import { StockService } from './stock.service';
 import { CreateStockDocumentDto } from './dto/create-stock-document.dto';
@@ -34,14 +36,15 @@ export class StockDocumentsController {
   ) {}
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get(':id/documents')
   list(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.service.listForStock(id);
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'manager', 'warehouse', 'sales', 'employee')
   @Post(':id/documents')
   create(
     @Param('id', new ParseUUIDPipe()) id: string,
