@@ -159,7 +159,7 @@ export function CustomerModal({ customer, canEdit, onClose, onSaved }: Props) {
         legal_name_ar: clean(form.legal_name_ar),
         cr_number: form.customer_type === 'business' ? clean(form.cr_number) : undefined,
         vat_number: form.customer_type === 'business' ? clean(form.vat_number) : undefined,
-        national_id: form.customer_type === 'individual' ? clean(form.national_id) : undefined,
+        national_id: clean(form.national_id),
         national_address_code: clean(form.national_address_code),
         phone: form.phone,
         email: clean(form.email),
