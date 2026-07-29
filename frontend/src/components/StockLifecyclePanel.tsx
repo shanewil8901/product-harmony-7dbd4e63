@@ -10,7 +10,19 @@ import { stockDocumentsService } from '../services/stockDocuments.service';
 import { useAuth } from '../hooks/useAuth';
 
 /** Ordered lifecycle stages shown as a stepper. */
-const STAGE_ORDER: StockDocType[] = ['po', 'dispatch', 'grn', 'putaway', 'sales_invoice'];
+const STAGE_ORDER: StockDocType[] = [
+  'inquiry',
+  'quotation',
+  'po',
+  'vendor_invoice',
+  'payment',
+  'shipping',
+  'customs_clearance',
+  'grn',
+  'putaway',
+  'sales_invoice',
+  'payment_receipt',
+];
 const TERMINAL: StockDocType[] = ['write_off', 'cancellation'];
 
 interface Props {
