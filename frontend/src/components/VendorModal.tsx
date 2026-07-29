@@ -327,6 +327,18 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
                 </select>
               </Field>
             </Pair>
+            <Field
+              label="Import/Export License No."
+              hint="Required if the vendor imports or exports goods. Upload the license PDF under the Documents tab."
+            >
+              <input
+                className="input"
+                value={form.import_export_license_no ?? ''}
+                onChange={(e) => set('import_export_license_no', e.target.value)}
+                disabled={!canEdit}
+                maxLength={64}
+              />
+            </Field>
             <Field label="Notes">
               <textarea
                 className="input min-h-[72px]"
