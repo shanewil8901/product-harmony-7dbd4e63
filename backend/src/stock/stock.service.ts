@@ -102,8 +102,8 @@ export class StockService {
       manufacture_date: dto.manufacture_date ?? null,
       expiry_date: dto.expiry_date ?? null,
       ordered_at: dto.ordered_at ? new Date(dto.ordered_at) : new Date(),
-      // Lifecycle rule: new stock always starts as "ordered". Manual override ignored.
-      status: 'ordered',
+      // New procurement lifecycle starts at "inquiry_sent" (auto Inquiry doc).
+      status: 'inquiry_sent',
       notes: dto.notes ?? null,
       created_by: userEmail,
       updated_by: userEmail,
@@ -111,11 +111,11 @@ export class StockService {
     const saved = await this.repo.save(entity);
     await this.history.logCreate(saved, userEmail);
 
-    // Auto-generate the Purchase Order document for the new stock row.
+    // Auto-generate the Inquiry document — first stage of the procurement pipeline.
     const { document } = await this.documents.createForStock(
       saved.id,
-      'po',
-      { ordered_qty: saved.qty, vendor: saved.vendor_name },
+      'inquiry',
+      { vendor: saved.vendor_name, requested_qty: saved.qty },
       userEmail,
       { skipTransitionCheck: true },
     );
