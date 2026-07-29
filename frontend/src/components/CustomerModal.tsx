@@ -338,7 +338,7 @@ export function CustomerModal({ customer, canEdit, onClose, onSaved }: Props) {
                 />
               </Field>
             </Pair>
-            {form.customer_type === 'business' ? (
+            {form.customer_type === 'business' && (
               <Pair>
                 <Field label="Commercial Registration (CR) *" error={errors.cr_number}>
                   <input
@@ -349,28 +349,28 @@ export function CustomerModal({ customer, canEdit, onClose, onSaved }: Props) {
                     maxLength={10}
                   />
                 </Field>
-                <Field label="VAT Registration No." error={errors.vat_number}>
+                <Field label="VAT Registration No. *" error={errors.vat_number}>
                   <input
                     className="input font-mono"
                     value={form.vat_number}
                     onChange={(e) => set('vat_number', e.target.value)}
                     disabled={!canEdit}
                     maxLength={15}
+                    placeholder="3XXXXXXXXXXXXX3"
                   />
                 </Field>
               </Pair>
-            ) : (
-              <Field label="National ID / Iqama *" error={errors.national_id}>
-                <input
-                  className="input font-mono"
-                  value={form.national_id}
-                  onChange={(e) => set('national_id', e.target.value)}
-                  disabled={!canEdit}
-                  maxLength={10}
-                  placeholder="1XXXXXXXXX or 2XXXXXXXXX"
-                />
-              </Field>
             )}
+            <Field label="National ID / Iqama *" error={errors.national_id}>
+              <input
+                className="input font-mono"
+                value={form.national_id}
+                onChange={(e) => set('national_id', e.target.value)}
+                disabled={!canEdit}
+                maxLength={10}
+                placeholder="1XXXXXXXXX or 2XXXXXXXXX"
+              />
+            </Field>
             <Pair>
               <Field label="Phone (KSA) *" error={errors.phone}>
                 <input
