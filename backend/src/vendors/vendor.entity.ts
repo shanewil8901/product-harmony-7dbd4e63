@@ -97,6 +97,10 @@ export class Vendor {
   @Column({ type: 'text', nullable: true })
   notes!: string | null;
 
+  // Saudi import/export compliance — license number (document uploaded to vendor_documents).
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  import_export_license_no!: string | null;
+
   @OneToMany(() => VendorDocument, (d) => d.vendor)
   documents!: VendorDocument[];
 
