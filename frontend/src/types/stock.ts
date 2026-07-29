@@ -1,30 +1,54 @@
 import type { Paginated, RoleCode } from './product';
 
 export type StockStatus =
+  | 'inquiry_sent'
+  | 'quotation_received'
+  | 'quotation_approved'
+  | 'invoice_received'
+  | 'payment_processed'
+  | 'shipped'
+  | 'customs_cleared'
   | 'ordered'
   | 'in_transit'
   | 'received'
   | 'in_warehouse'
   | 'sold_out'
+  | 'settled'
   | 'expired'
   | 'cancelled';
 
 export const STOCK_STATUSES: StockStatus[] = [
+  'inquiry_sent',
+  'quotation_received',
+  'quotation_approved',
+  'invoice_received',
+  'payment_processed',
+  'shipped',
+  'customs_cleared',
   'ordered',
   'in_transit',
   'received',
   'in_warehouse',
   'sold_out',
+  'settled',
   'expired',
   'cancelled',
 ];
 
 export const STOCK_STATUS_LABEL: Record<StockStatus, string> = {
+  inquiry_sent: 'Inquiry sent',
+  quotation_received: 'Quotation received',
+  quotation_approved: 'Quotation approved (PO issued)',
+  invoice_received: 'Vendor invoice received',
+  payment_processed: 'Payment processed',
+  shipped: 'Shipped',
+  customs_cleared: 'Customs cleared',
   ordered: 'Ordered',
   in_transit: 'On the way to warehouse',
   received: 'Received',
   in_warehouse: 'In warehouse',
   sold_out: 'Sold out',
+  settled: 'Settled',
   expired: 'Expired',
   cancelled: 'Cancelled',
 };
