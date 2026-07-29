@@ -121,12 +121,12 @@ export function CustomerModal({ customer, canEdit, onClose, onSaved }: Props) {
     if (!form.legal_name.trim()) e.legal_name = 'Required';
     if (form.customer_type === 'business') {
       if (!form.cr_number || !CR_RE.test(form.cr_number)) e.cr_number = 'CR must be 10 digits';
-      if (form.vat_number && !VAT_RE.test(form.vat_number))
-        e.vat_number = '15 digits starting/ending with 3';
-    } else {
-      if (!form.national_id || !NATID_RE.test(form.national_id))
-        e.national_id = '10 digits starting with 1 or 2';
+      if (!form.vat_number || !VAT_RE.test(form.vat_number))
+        e.vat_number = 'VAT is required — 15 digits starting/ending with 3';
     }
+    // National ID / Iqama required for BOTH business and individual customers.
+    if (!form.national_id || !NATID_RE.test(form.national_id))
+      e.national_id = '10 digits starting with 1 or 2';
     if (!PHONE_RE.test(form.phone)) e.phone = 'Format: +9665XXXXXXXX';
     if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Invalid email';
     if (form.national_address_code && !NAT_ADDR_RE.test(form.national_address_code))
