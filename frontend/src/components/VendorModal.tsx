@@ -81,6 +81,7 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
         currency_id: vendor.currency_id ?? '',
         status: vendor.status,
         notes: vendor.notes ?? '',
+        import_export_license_no: vendor.import_export_license_no ?? '',
       });
       void loadDocs(vendor.id);
     } else {
