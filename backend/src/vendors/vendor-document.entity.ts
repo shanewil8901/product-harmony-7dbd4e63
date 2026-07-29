@@ -14,6 +14,7 @@ export type VendorDocType =
   | 'vat'
   | 'national_address'
   | 'iban_letter'
+  | 'import_export_license'
   | 'other';
 
 export const VENDOR_DOC_TYPES: VendorDocType[] = [
@@ -21,6 +22,7 @@ export const VENDOR_DOC_TYPES: VendorDocType[] = [
   'vat',
   'national_address',
   'iban_letter',
+  'import_export_license',
   'other',
 ];
 
@@ -29,6 +31,7 @@ export const VENDOR_DOC_LABEL: Record<VendorDocType, string> = {
   vat: 'VAT Certificate',
   national_address: 'National Address Certificate',
   iban_letter: 'Bank IBAN Letter',
+  import_export_license: 'Import/Export License',
   other: 'Other',
 };
 

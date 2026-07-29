@@ -35,15 +35,22 @@ export class StockDocumentsService {
 
   async listForStock(stockId: string) {
     const docs = await this.repo.find({ where: { stock_id: stockId } });
-    // Latest lifecycle stage first (cancellation/write-off, then sales_invoice → po).
+    // Latest lifecycle stage first (cancellation/write-off, then payment_receipt → inquiry).
     const rank: Record<StockDocType, number> = {
-      po: 1,
-      dispatch: 2,
-      grn: 3,
-      putaway: 4,
-      sales_invoice: 5,
-      write_off: 6,
-      cancellation: 7,
+      inquiry: 1,
+      quotation: 2,
+      po: 3,
+      vendor_invoice: 4,
+      payment: 5,
+      shipping: 6,
+      customs_clearance: 7,
+      dispatch: 8,
+      grn: 9,
+      putaway: 10,
+      sales_invoice: 11,
+      payment_receipt: 12,
+      write_off: 13,
+      cancellation: 14,
     };
     return docs.sort((a, b) => {
       const diff = (rank[b.doc_type] ?? 0) - (rank[a.doc_type] ?? 0);

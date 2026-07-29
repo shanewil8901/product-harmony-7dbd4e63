@@ -84,6 +84,7 @@ export interface Vendor {
   currency: Currency | null;
   status: VendorStatus;
   notes: string | null;
+  import_export_license_no?: string | null;
   documents?: VendorDocument[];
   created_at: string;
   updated_at: string;
@@ -111,6 +112,7 @@ export interface VendorInput {
   currency_id?: string;
   status?: VendorStatus;
   notes?: string;
+  import_export_license_no?: string;
 }
 
 export interface VendorPage {

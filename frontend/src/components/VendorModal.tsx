@@ -45,6 +45,7 @@ const emptyForm: VendorInput = {
   currency_id: '',
   status: 'active',
   notes: '',
+  import_export_license_no: '',
 };
 
 export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
@@ -80,6 +81,7 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
         currency_id: vendor.currency_id ?? '',
         status: vendor.status,
         notes: vendor.notes ?? '',
+        import_export_license_no: vendor.import_export_license_no ?? '',
       });
       void loadDocs(vendor.id);
     } else {
@@ -140,6 +142,7 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
         bank_name: form.bank_name?.trim() || undefined,
         currency_id: form.currency_id || undefined,
         notes: form.notes?.trim() || undefined,
+        import_export_license_no: form.import_export_license_no?.trim() || undefined,
       };
       if (vendor) await vendorsService.update(vendor.id, payload);
       else await vendorsService.create(payload);
@@ -324,6 +327,18 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
                 </select>
               </Field>
             </Pair>
+            <Field
+              label="Import/Export License No."
+              hint="Required if the vendor imports or exports goods. Upload the license PDF under the Documents tab."
+            >
+              <input
+                className="input"
+                value={form.import_export_license_no ?? ''}
+                onChange={(e) => set('import_export_license_no', e.target.value)}
+                disabled={!canEdit}
+                maxLength={64}
+              />
+            </Field>
             <Field label="Notes">
               <textarea
                 className="input min-h-[72px]"
@@ -510,16 +525,19 @@ function Pair({ children }: { children: React.ReactNode }) {
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="label">{label}</label>
       {children}
+      {hint && !error && <p className="mt-1 text-xs text-brown-400">{hint}</p>}
       {error && <p className="mt-1 text-xs text-brown-500">{error}</p>}
     </div>
   );

@@ -10,7 +10,19 @@ import { stockDocumentsService } from '../services/stockDocuments.service';
 import { useAuth } from '../hooks/useAuth';
 
 /** Ordered lifecycle stages shown as a stepper. */
-const STAGE_ORDER: StockDocType[] = ['po', 'dispatch', 'grn', 'putaway', 'sales_invoice'];
+const STAGE_ORDER: StockDocType[] = [
+  'inquiry',
+  'quotation',
+  'po',
+  'vendor_invoice',
+  'payment',
+  'shipping',
+  'customs_clearance',
+  'grn',
+  'putaway',
+  'sales_invoice',
+  'payment_receipt',
+];
 const TERMINAL: StockDocType[] = ['write_off', 'cancellation'];
 
 interface Props {
@@ -223,12 +235,27 @@ function StageForm({
           {config.map((f) => (
             <div key={f.name} className={f.full ? 'sm:col-span-2' : ''}>
               <label className="label">{f.label}</label>
-              <input
-                className="input"
-                type={f.type ?? 'text'}
-                value={fields[f.name] ?? ''}
-                onChange={(e) => setFields({ ...fields, [f.name]: e.target.value })}
-              />
+              {f.options ? (
+                <select
+                  className="input"
+                  value={fields[f.name] ?? ''}
+                  onChange={(e) => setFields({ ...fields, [f.name]: e.target.value })}
+                >
+                  <option value="">— Select —</option>
+                  {f.options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="input"
+                  type={f.type ?? 'text'}
+                  value={fields[f.name] ?? ''}
+                  onChange={(e) => setFields({ ...fields, [f.name]: e.target.value })}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -250,10 +277,65 @@ interface FieldConfig {
   label: string;
   type?: string;
   full?: boolean;
+  options?: { value: string; label: string }[];
 }
 
+const PAYMENT_METHODS = [
+  { value: 'LC', label: 'Letter of Credit (LC)' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'CHECK', label: 'Check' },
+  { value: 'CASH', label: 'Cash' },
+];
+
+const INCOTERMS = [
+  { value: 'CIF', label: 'CIF — Cost, Insurance & Freight' },
+  { value: 'FOB', label: 'FOB — Free On Board' },
+  { value: 'EXW', label: 'EXW — Ex Works' },
+  { value: 'DDP', label: 'DDP — Delivered Duty Paid' },
+  { value: 'CFR', label: 'CFR — Cost & Freight' },
+  { value: 'CIP', label: 'CIP — Carriage & Insurance Paid' },
+  { value: 'FCA', label: 'FCA — Free Carrier' },
+];
+
 const STAGE_FIELDS: Record<StockDocType, FieldConfig[]> = {
-  po: [],
+  inquiry: [
+    { name: 'inquiry_no', label: 'Inquiry no.' },
+    { name: 'sent_at', label: 'Sent at', type: 'datetime-local' },
+    { name: 'notes', label: 'Notes', full: true },
+  ],
+  quotation: [
+    { name: 'quote_no', label: 'Vendor quotation no.' },
+    { name: 'quote_date', label: 'Quotation date', type: 'date' },
+    { name: 'valid_until', label: 'Valid until', type: 'date' },
+    { name: 'amount', label: 'Quoted amount', type: 'number' },
+  ],
+  po: [
+    { name: 'po_no', label: 'PO reference (optional)' },
+    { name: 'approved_at', label: 'Approved at', type: 'datetime-local' },
+  ],
+  vendor_invoice: [
+    { name: 'invoice_no', label: 'Vendor invoice no.' },
+    { name: 'invoice_date', label: 'Invoice date', type: 'date' },
+    { name: 'amount', label: 'Invoice amount', type: 'number' },
+  ],
+  payment: [
+    { name: 'payment_method', label: 'Payment method', options: PAYMENT_METHODS },
+    { name: 'reference_no', label: 'Reference / LC / Cheque no.' },
+    { name: 'paid_at', label: 'Paid at', type: 'datetime-local' },
+    { name: 'amount', label: 'Amount paid', type: 'number' },
+  ],
+  shipping: [
+    { name: 'incoterm', label: 'Incoterm', options: INCOTERMS },
+    { name: 'carrier', label: 'Carrier / Shipping line' },
+    { name: 'awb_no', label: 'AWB / BL no.' },
+    { name: 'eta', label: 'ETA', type: 'date' },
+  ],
+  customs_clearance: [
+    { name: 'clearance_ref', label: 'Customs clearance reference' },
+    { name: 'port', label: 'Port of entry' },
+    { name: 'cleared_at', label: 'Cleared at', type: 'datetime-local' },
+    { name: 'duty_amount', label: 'Duty amount', type: 'number' },
+  ],
   dispatch: [
     { name: 'carrier', label: 'Carrier' },
     { name: 'tracking_no', label: 'Tracking no.' },
@@ -273,17 +355,30 @@ const STAGE_FIELDS: Record<StockDocType, FieldConfig[]> = {
     { name: 'customer', label: 'Customer' },
     { name: 'sold_qty', label: 'Sold qty', type: 'number' },
   ],
+  payment_receipt: [
+    { name: 'receipt_no', label: 'Receipt no.' },
+    { name: 'received_at', label: 'Received at', type: 'datetime-local' },
+    { name: 'amount', label: 'Amount received', type: 'number' },
+  ],
   write_off: [{ name: 'reason', label: 'Reason', full: true }],
   cancellation: [{ name: 'reason', label: 'Reason', full: true }],
 };
 
 export function StatusBadge({ value }: { value: StockStatus }) {
   const tone: Record<StockStatus, string> = {
+    inquiry_sent: 'bg-gold-50 text-ink border-gold-200',
+    quotation_received: 'bg-gold-50 text-ink border-gold-200',
+    quotation_approved: 'bg-gold-50 text-ink border-gold-200',
+    invoice_received: 'bg-gold-50 text-ink border-gold-200',
+    payment_processed: 'bg-gold-50 text-ink border-gold-200',
+    shipped: 'bg-paper-warm text-ink border-brown-200',
+    customs_cleared: 'bg-paper-warm text-ink border-brown-200',
     ordered: 'bg-gold-50 text-ink border-gold-200',
     in_transit: 'bg-paper-warm text-ink border-brown-200',
     received: 'bg-forest-50 text-forest-500 border-forest-100',
     in_warehouse: 'bg-forest-50 text-forest-500 border-forest-100',
     sold_out: 'bg-brown-50 text-brown-600 border-brown-200',
+    settled: 'bg-forest-50 text-forest-500 border-forest-100',
     expired: 'bg-brown-50 text-brown-600 border-brown-200',
     cancelled: 'bg-brown-50 text-brown-600 border-brown-200',
   };

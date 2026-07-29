@@ -107,4 +107,10 @@ export class CreateVendorDto {
   @IsString()
   @MaxLength(2000)
   notes?: string;
+
+  @ApiPropertyOptional({ description: 'Import/Export license number issued by KSA authorities' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  import_export_license_no?: string;
 }

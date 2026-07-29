@@ -87,12 +87,19 @@ export class CustomersService {
     return { id, deleted: true };
   }
 
-  private validateTypeConstraints(dto: { customer_type: string; cr_number?: string | null; national_id?: string | null }) {
-    if (dto.customer_type === 'business' && !dto.cr_number) {
-      throw new BadRequestException('cr_number is required for business customers');
+  private validateTypeConstraints(dto: {
+    customer_type: string;
+    cr_number?: string | null;
+    vat_number?: string | null;
+    national_id?: string | null;
+  }) {
+    if (dto.customer_type === 'business') {
+      if (!dto.cr_number) throw new BadRequestException('cr_number is required for business customers');
+      if (!dto.vat_number) throw new BadRequestException('vat_number is required for business customers');
     }
-    if (dto.customer_type === 'individual' && !dto.national_id) {
-      throw new BadRequestException('national_id is required for individual customers');
+    // National ID / Iqama is required for BOTH business and individual customers.
+    if (!dto.national_id) {
+      throw new BadRequestException('national_id (Iqama / National ID) is required for all customers');
     }
   }
 
