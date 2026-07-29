@@ -102,43 +102,93 @@ export interface StockInput {
 export type StockPage = Paginated<Stock>;
 
 export type StockDocType =
+  | 'inquiry'
+  | 'quotation'
   | 'po'
+  | 'vendor_invoice'
+  | 'payment'
+  | 'shipping'
+  | 'customs_clearance'
   | 'dispatch'
   | 'grn'
   | 'putaway'
   | 'sales_invoice'
+  | 'payment_receipt'
   | 'write_off'
   | 'cancellation';
 
 export const STOCK_DOC_TYPES: StockDocType[] = [
+  'inquiry',
+  'quotation',
   'po',
+  'vendor_invoice',
+  'payment',
+  'shipping',
+  'customs_clearance',
   'dispatch',
   'grn',
   'putaway',
   'sales_invoice',
+  'payment_receipt',
   'write_off',
   'cancellation',
 ];
 
 export const STOCK_DOC_LABEL: Record<StockDocType, string> = {
+  inquiry: 'Inquiry',
+  quotation: 'Vendor Quotation',
   po: 'Purchase Order',
+  vendor_invoice: 'Vendor Invoice',
+  payment: 'Payment',
+  shipping: 'Shipping / Incoterms',
+  customs_clearance: 'Customs Clearance',
   dispatch: 'Dispatch / Shipping',
   grn: 'Goods Received Note',
   putaway: 'Putaway & Invoice',
   sales_invoice: 'Sales Invoice',
+  payment_receipt: 'Payment Receipt',
   write_off: 'Write-Off / Expiry',
   cancellation: 'Cancellation',
 };
 
 /** UI-side mirror of backend `ALLOWED_FROM` for gating stage buttons. */
 export const DOC_ALLOWED_FROM: Record<StockDocType, StockStatus[]> = {
-  po: ['ordered'],
-  dispatch: ['ordered'],
-  grn: ['in_transit'],
+  inquiry: ['inquiry_sent'],
+  quotation: ['inquiry_sent'],
+  po: ['quotation_received', 'ordered'],
+  vendor_invoice: ['quotation_approved'],
+  payment: ['invoice_received'],
+  shipping: ['payment_processed'],
+  customs_clearance: ['shipped', 'in_transit'],
+  dispatch: ['quotation_approved', 'ordered'],
+  grn: ['customs_cleared', 'in_transit'],
   putaway: ['received'],
   sales_invoice: ['in_warehouse'],
-  write_off: ['ordered', 'in_transit', 'received', 'in_warehouse'],
-  cancellation: ['ordered', 'in_transit'],
+  payment_receipt: ['sold_out'],
+  write_off: [
+    'inquiry_sent',
+    'quotation_received',
+    'quotation_approved',
+    'invoice_received',
+    'payment_processed',
+    'shipped',
+    'customs_cleared',
+    'ordered',
+    'in_transit',
+    'received',
+    'in_warehouse',
+  ],
+  cancellation: [
+    'inquiry_sent',
+    'quotation_received',
+    'quotation_approved',
+    'invoice_received',
+    'payment_processed',
+    'shipped',
+    'customs_cleared',
+    'ordered',
+    'in_transit',
+  ],
 };
 
 /**
@@ -146,11 +196,18 @@ export const DOC_ALLOWED_FROM: Record<StockDocType, StockStatus[]> = {
  * Mirrors backend `STAGE_ROLES`.
  */
 export const STAGE_ROLES: Record<StockDocType, RoleCode[]> = {
+  inquiry: ['employee'],
+  quotation: ['employee'],
   po: ['employee'],
+  vendor_invoice: ['employee'],
+  payment: ['employee'],
+  shipping: ['employee', 'warehouse'],
+  customs_clearance: ['employee', 'warehouse'],
   dispatch: ['warehouse'],
   grn: ['warehouse'],
   putaway: ['warehouse'],
   sales_invoice: ['sales'],
+  payment_receipt: ['sales', 'employee'],
   write_off: [],
   cancellation: [],
 };
