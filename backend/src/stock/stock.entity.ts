@@ -14,20 +14,36 @@ import { Uom } from '../master-data/uom.entity';
 import { Currency } from '../master-data/currency.entity';
 
 export type StockStatus =
+  | 'inquiry_sent'
+  | 'quotation_received'
+  | 'quotation_approved'
+  | 'invoice_received'
+  | 'payment_processed'
+  | 'shipped'
+  | 'customs_cleared'
   | 'ordered'
   | 'in_transit'
   | 'received'
   | 'in_warehouse'
   | 'sold_out'
+  | 'settled'
   | 'expired'
   | 'cancelled';
 
 export const STOCK_STATUSES: StockStatus[] = [
+  'inquiry_sent',
+  'quotation_received',
+  'quotation_approved',
+  'invoice_received',
+  'payment_processed',
+  'shipped',
+  'customs_cleared',
   'ordered',
   'in_transit',
   'received',
   'in_warehouse',
   'sold_out',
+  'settled',
   'expired',
   'cancelled',
 ];
