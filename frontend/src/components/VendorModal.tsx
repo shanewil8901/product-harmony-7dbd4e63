@@ -45,6 +45,7 @@ const emptyForm: VendorInput = {
   currency_id: '',
   status: 'active',
   notes: '',
+  import_export_license_no: '',
 };
 
 export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
