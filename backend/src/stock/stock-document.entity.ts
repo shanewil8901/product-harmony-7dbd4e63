@@ -9,20 +9,34 @@ import {
 } from 'typeorm';
 
 export type StockDocType =
+  | 'inquiry'
+  | 'quotation'
   | 'po'
+  | 'vendor_invoice'
+  | 'payment'
+  | 'shipping'
+  | 'customs_clearance'
   | 'dispatch'
   | 'grn'
   | 'putaway'
   | 'sales_invoice'
+  | 'payment_receipt'
   | 'write_off'
   | 'cancellation';
 
 export const STOCK_DOC_TYPES: StockDocType[] = [
+  'inquiry',
+  'quotation',
   'po',
+  'vendor_invoice',
+  'payment',
+  'shipping',
+  'customs_clearance',
   'dispatch',
   'grn',
   'putaway',
   'sales_invoice',
+  'payment_receipt',
   'write_off',
   'cancellation',
 ];
