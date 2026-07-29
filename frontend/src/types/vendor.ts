@@ -112,6 +112,7 @@ export interface VendorInput {
   currency_id?: string;
   status?: VendorStatus;
   notes?: string;
+  import_export_license_no?: string;
 }
 
 export interface VendorPage {
