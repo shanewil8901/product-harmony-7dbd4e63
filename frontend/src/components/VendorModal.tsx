@@ -525,16 +525,19 @@ function Pair({ children }: { children: React.ReactNode }) {
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string;
   error?: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="label">{label}</label>
       {children}
+      {hint && !error && <p className="mt-1 text-xs text-brown-400">{hint}</p>}
       {error && <p className="mt-1 text-xs text-brown-500">{error}</p>}
     </div>
   );
