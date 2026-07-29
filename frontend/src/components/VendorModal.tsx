@@ -142,6 +142,7 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
         bank_name: form.bank_name?.trim() || undefined,
         currency_id: form.currency_id || undefined,
         notes: form.notes?.trim() || undefined,
+        import_export_license_no: form.import_export_license_no?.trim() || undefined,
       };
       if (vendor) await vendorsService.update(vendor.id, payload);
       else await vendorsService.create(payload);
