@@ -16,13 +16,15 @@ export const stockDocumentsService = {
     stockId: string,
     docType: StockDocType,
     payload?: Record<string, unknown>,
+    money?: { total_amount?: number; currency_code?: string },
   ) {
     const { data } = await api.post<{ document: StockDocument; stock: Stock }>(
       `/stock/${stockId}/documents`,
-      { doc_type: docType, payload },
+      { doc_type: docType, payload, ...money },
     );
     return data;
   },
+
   openPrint(docId: string) {
     window.open(documentPrintUrl(docId), '_blank', 'noopener,noreferrer');
   },
