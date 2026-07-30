@@ -3,7 +3,7 @@ import { api } from './api';
 export interface StockHistoryEntry {
   id: string;
   stock_id: string;
-  action: 'create' | 'update' | 'delete' | 'status_change' | 'document';
+  action: 'create' | 'update' | 'delete' | 'status_change' | 'document' | 'attachment';
   changes: Record<string, unknown> | null;
   snapshot: Record<string, unknown> | null;
   changed_at: string;
