@@ -11,7 +11,8 @@ export type StockHistoryAction =
   | 'update'
   | 'delete'
   | 'status_change'
-  | 'document';
+  | 'document'
+  | 'attachment';
 
 @Entity({ name: 'stock_history' })
 export class StockHistory {
@@ -27,7 +28,8 @@ export class StockHistory {
 
   /**
    * For `update`/`status_change`: `{ field: { from, to } }`.
-   * For `document`: `{ doc_type, doc_number, status_from, status_to }`.
+   * For `document`: `{ doc_type, doc_number, status_from, status_to, total_amount, currency_code }`.
+   * For `attachment`: `{ stage, file_name, attachment_id, action }`.
    * For `create`/`delete`: null (see snapshot).
    */
   @Column({ name: 'changes', type: 'json', nullable: true })

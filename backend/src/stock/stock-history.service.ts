@@ -98,6 +98,8 @@ export class StockHistoryService {
       doc_number: string;
       status_from: string;
       status_to: string;
+      total_amount?: string | null;
+      currency_code?: string | null;
     },
     userEmail: string,
     mgr?: EntityManager,
@@ -108,6 +110,30 @@ export class StockHistoryService {
       {
         stock_id: stockId,
         action,
+        changes: info,
+        snapshot: null,
+        changed_by: userEmail,
+      },
+      mgr,
+    );
+  }
+
+  /** Files attached at any lifecycle stage are part of the audit trail. */
+  async logAttachment(
+    stockId: string,
+    info: {
+      stage: string;
+      file_name: string;
+      attachment_id: string;
+      action: 'uploaded' | 'deleted';
+    },
+    userEmail: string,
+    mgr?: EntityManager,
+  ) {
+    await this.save(
+      {
+        stock_id: stockId,
+        action: 'attachment',
         changes: info,
         snapshot: null,
         changed_by: userEmail,
