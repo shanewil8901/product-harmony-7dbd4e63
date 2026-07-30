@@ -134,10 +134,13 @@ export class StockDocumentsService {
           doc_number,
           status_from: statusFrom,
           status_to: statusTo,
+          total_amount: saved.total_amount,
+          currency_code: saved.currency_code,
         },
         userEmail,
         mgr,
       );
+
 
       return { document: saved, stock };
     });
