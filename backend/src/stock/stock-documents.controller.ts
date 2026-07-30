@@ -56,7 +56,11 @@ export class StockDocumentsController {
         `Your role (${req.user.role ?? 'none'}) cannot generate this document`,
       );
     }
-    return this.service.createForStock(id, dto.doc_type, dto.payload, req.user.email);
+    return this.service.createForStock(id, dto.doc_type, dto.payload, req.user.email, {
+      total_amount: dto.total_amount,
+      currency_code: dto.currency_code,
+    });
+
   }
 
 
