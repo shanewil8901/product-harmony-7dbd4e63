@@ -74,7 +74,11 @@ export class StockDocumentsService {
     docType: StockDocType,
     payload: Record<string, unknown> | undefined,
     userEmail: string,
-    opts: { skipTransitionCheck?: boolean } = {},
+    opts: {
+      skipTransitionCheck?: boolean;
+      total_amount?: number;
+      currency_code?: string;
+    } = {},
   ): Promise<{ document: StockDocument; stock: Stock }> {
     return this.dataSource.transaction(async (mgr) => {
       const stock = await mgr.findOne(Stock, { where: { id: stockId } });
@@ -99,15 +103,23 @@ export class StockDocumentsService {
         }
       }
 
+      // Currency is mandatory as soon as a monetary total is recorded.
+      if (opts.total_amount !== undefined && !opts.currency_code) {
+        throw new BadRequestException('currency_code is required when a total amount is provided');
+      }
+
       const doc_number = await this.nextDocNumber(docType);
       const doc = mgr.create(StockDocument, {
         stock_id: stockId,
         doc_type: docType,
         doc_number,
         payload: payload ?? null,
+        total_amount: opts.total_amount !== undefined ? opts.total_amount.toFixed(2) : null,
+        currency_code: opts.total_amount !== undefined ? (opts.currency_code ?? null) : null,
         generated_by: userEmail,
       });
       const saved = await mgr.save(doc);
+
 
       const statusFrom = stock.status;
       const statusTo = DOC_TYPE_TO_STATUS[docType];
@@ -122,10 +134,13 @@ export class StockDocumentsService {
           doc_number,
           status_from: statusFrom,
           status_to: statusTo,
+          total_amount: saved.total_amount,
+          currency_code: saved.currency_code,
         },
         userEmail,
         mgr,
       );
+
 
       return { document: saved, stock };
     });

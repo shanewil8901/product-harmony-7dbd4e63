@@ -60,6 +60,15 @@ export class StockDocument {
   @Column({ type: 'json', nullable: true })
   payload!: Record<string, unknown> | null;
 
+  /** Financial total captured at this stage (quotation, invoice, payment, …). */
+  @Column({ name: 'total_amount', type: 'decimal', precision: 14, scale: 2, nullable: true })
+  total_amount!: string | null;
+
+  /** ISO currency code for `total_amount` — mandatory whenever an amount is set. */
+  @Column({ name: 'currency_code', type: 'varchar', length: 8, nullable: true })
+  currency_code!: string | null;
+
+
   @CreateDateColumn({ name: 'generated_at', type: 'datetime', precision: 6 })
   generated_at!: Date;
 

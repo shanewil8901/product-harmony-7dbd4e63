@@ -79,6 +79,9 @@ export interface Stock {
   buying_currency_symbol?: string | null;
   selling_currency_code?: string | null;
   selling_currency_symbol?: string | null;
+  /** qty × buying (cost) price — the value used across inventory reports. */
+  total_buying_value?: string | null;
+  total_selling_value?: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;
@@ -99,7 +102,14 @@ export interface StockInput {
   notes?: string;
 }
 
-export type StockPage = Paginated<Stock>;
+export interface StockCurrencyTotal {
+  currency_code: string;
+  total_buying_value: string;
+  total_qty: string;
+  lines: number;
+}
+
+export type StockPage = Paginated<Stock> & { summary?: StockCurrencyTotal[] };
 
 export type StockDocType =
   | 'inquiry'
@@ -226,8 +236,46 @@ export interface StockDocument {
   doc_type: StockDocType;
   doc_number: string;
   payload: Record<string, unknown> | null;
+  total_amount: string | null;
+  currency_code: string | null;
   generated_at: string;
   generated_by: string | null;
+}
+
+/** Files may be attached at any lifecycle stage (or generally to the stock row). */
+export type StockAttachmentStage = StockDocType | 'general';
+
+export const STOCK_ATTACHMENT_STAGES: StockAttachmentStage[] = ['general', ...STOCK_DOC_TYPES];
+
+export const STOCK_ATTACHMENT_STAGE_LABEL: Record<StockAttachmentStage, string> = {
+  general: 'General / Other',
+  ...STOCK_DOC_LABEL,
+};
+
+export interface StockAttachment {
+  id: string;
+  stock_id: string;
+  stage: StockAttachmentStage;
+  stock_document_id: string | null;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  reference_no: string | null;
+  notes: string | null;
+  uploaded_at: string;
+  uploaded_by: string | null;
+}
+
+/** "10,000.00 SAR" — never render a bare amount without its currency. */
+export function formatMoney(amount: string | number | null | undefined, currency?: string | null) {
+  if (amount === null || amount === undefined || amount === '') return '—';
+  const n = Number(amount);
+  if (Number.isNaN(n)) return '—';
+  const formatted = n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return currency ? `${formatted} ${currency}` : formatted;
 }
 
 export interface ProductHistoryEntry {

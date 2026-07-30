@@ -27,6 +27,9 @@ export class StockService {
   ];
 
   private enrich<T extends Stock>(s: T) {
+    // Inventory value is always based on the BUYING (cost) price, never the selling price.
+    const totalBuyingValue = Number(s.qty) * Number(s.buying_price_snapshot);
+    const totalSellingValue = Number(s.qty) * Number(s.selling_price_snapshot);
     return {
       ...s,
       product_code: s.product?.productCode ?? null,
@@ -37,7 +40,29 @@ export class StockService {
       buying_currency_symbol: s.buying_currency_snapshot?.symbol ?? null,
       selling_currency_code: s.selling_currency_snapshot?.code ?? null,
       selling_currency_symbol: s.selling_currency_snapshot?.symbol ?? null,
+      total_buying_value: totalBuyingValue.toFixed(2),
+      total_selling_value: totalSellingValue.toFixed(2),
     };
+  }
+
+  /** Aggregate buying value grouped by currency — reports must never mix currencies. */
+  private summarize(rows: Stock[]) {
+    const byCurrency = new Map<string, { currency_code: string; total_buying_value: number; qty: number; count: number }>();
+    for (const r of rows) {
+      const code = r.buying_currency_snapshot?.code ?? '—';
+      const entry =
+        byCurrency.get(code) ?? { currency_code: code, total_buying_value: 0, qty: 0, count: 0 };
+      entry.total_buying_value += Number(r.qty) * Number(r.buying_price_snapshot);
+      entry.qty += Number(r.qty);
+      entry.count += 1;
+      byCurrency.set(code, entry);
+    }
+    return [...byCurrency.values()].map((e) => ({
+      currency_code: e.currency_code,
+      total_buying_value: e.total_buying_value.toFixed(2),
+      total_qty: e.qty.toFixed(3),
+      lines: e.count,
+    }));
   }
 
   async findAll(q: QueryStockDto) {
@@ -60,15 +85,25 @@ export class StockService {
           b
             .where('s.batch_no LIKE :term', { term })
             .orWhere('s.vendor_name LIKE :term', { term })
-            .orWhere('s.notes LIKE :term', { term }),
+            .orWhere('s.notes LIKE :term', { term })
+            // Autocomplete search also matches the joined product.
+            .orWhere('product.productCode LIKE :term', { term })
+            .orWhere('product.description LIKE :term', { term }),
         ),
       );
     }
 
     qb.orderBy('s.created_at', 'DESC').skip((page - 1) * limit).take(limit);
     const [rows, total] = await qb.getManyAndCount();
-    return { items: rows.map((r) => this.enrich(r)), total, page, limit };
+    return {
+      items: rows.map((r) => this.enrich(r)),
+      total,
+      page,
+      limit,
+      summary: this.summarize(rows),
+    };
   }
+
 
   async findOne(id: string) {
     const s = await this.repo.findOne({
