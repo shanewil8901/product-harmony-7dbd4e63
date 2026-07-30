@@ -27,13 +27,28 @@ type EnrichedStock = Stock & {
   buying_currency_symbol?: string | null;
   selling_currency_code?: string | null;
   selling_currency_symbol?: string | null;
+  total_buying_value?: string | null;
 };
+
+/** "10,000.00 SAR" — every monetary value in a document carries its currency. */
+function money(amount: unknown, currency?: string | null): string {
+  if (amount === null || amount === undefined || amount === '') return '—';
+  const n = Number(amount);
+  if (Number.isNaN(n)) return '—';
+  const formatted = n.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return currency ? `${formatted} ${currency}` : formatted;
+}
 
 export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): string {
   const title = DOC_TYPE_LABEL[doc.doc_type];
   const payload = doc.payload ?? {};
+  const MONEY_KEYS = new Set(['amount', 'duty_amount', 'total_amount', 'unit_price']);
+  const docCurrency = doc.currency_code ?? null;
   const payloadRows = Object.entries(payload)
-    .map(([k, v]) => row(k.replace(/_/g, ' '), v))
+    .map(([k, v]) => row(k.replace(/_/g, ' '), MONEY_KEYS.has(k) ? money(v, docCurrency) : v))
     .join('');
 
   const productLabel = stock.product_code
@@ -45,6 +60,11 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
     stock.buying_currency_code ?? stock.buying_currency_snapshot?.code ?? '';
   const sellCur =
     stock.selling_currency_code ?? stock.selling_currency_snapshot?.code ?? '';
+
+  // Inventory valuation always uses the buying (cost) price, never the selling price.
+  const totalBuyingValue =
+    stock.total_buying_value ??
+    (Number(stock.qty) * Number(stock.buying_price_snapshot)).toFixed(2);
 
   const vendorLabel = stock.vendor_name
     ? stock.vendor_name
@@ -115,12 +135,27 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
     ${row('Vendor', vendorLabel)}
     ${row('Batch no.', stock.batch_no)}
     ${row('Quantity', `${Number(stock.qty).toFixed(3)}${qtyUom ? ` ${qtyUom}` : ''}`)}
-    ${row('Buying price @ order', `${Number(stock.buying_price_snapshot).toFixed(2)}${buyCur ? ` ${buyCur}` : ''}`)}
-    ${row('Selling price @ order', `${Number(stock.selling_price_snapshot).toFixed(2)}${sellCur ? ` ${sellCur}` : ''}`)}
+    ${row('Buying price @ order', money(stock.buying_price_snapshot, buyCur))}
+    ${row('Total buying value', money(totalBuyingValue, buyCur))}
+    ${row('Selling price @ order', money(stock.selling_price_snapshot, sellCur))}
     ${row('Manufacture date', stock.manufacture_date)}
     ${row('Expiry date', stock.expiry_date)}
     ${row('Ordered at', stock.ordered_at)}
     ${payloadRows}
+  </table>
+  <table>
+    <tr>
+      <th style="text-align:left;padding:10px 12px;background:#f1e6c4;color:#3d2e17">Document total</th>
+      <td style="padding:10px 12px;text-align:right;font-size:18px;font-weight:700">${esc(
+        money(doc.total_amount, docCurrency),
+      )}</td>
+    </tr>
+    <tr>
+      <th style="text-align:left;padding:10px 12px;background:#f7f2e7;color:#5a4632">Total buying value (qty × cost)</th>
+      <td style="padding:10px 12px;text-align:right;font-weight:600">${esc(
+        money(totalBuyingValue, buyCur),
+      )}</td>
+    </tr>
   </table>
   <div class="actions"><button onclick="window.print()">Print</button></div>
 </body></html>`;
