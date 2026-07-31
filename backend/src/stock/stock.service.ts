@@ -6,6 +6,7 @@ import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
 import { QueryStockDto } from './dto/query-stock.dto';
 import { Product } from '../products/product.entity';
+import { Vendor } from '../vendors/vendor.entity';
 import { StockDocumentsService } from './stock-documents.service';
 import type { StockDocument } from './stock-document.entity';
 import { StockHistoryService } from './stock-history.service';
@@ -15,6 +16,7 @@ export class StockService {
   constructor(
     @InjectRepository(Stock) private readonly repo: Repository<Stock>,
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
+    @InjectRepository(Vendor) private readonly vendorRepo: Repository<Vendor>,
     private readonly documents: StockDocumentsService,
     private readonly history: StockHistoryService,
   ) {}
