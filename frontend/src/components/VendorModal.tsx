@@ -105,7 +105,8 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
     const e: Partial<Record<keyof VendorInput, string>> = {};
     if (!form.legal_name.trim()) e.legal_name = 'Required';
     if (!CR_RE.test(form.cr_number)) e.cr_number = 'CR must be 10 digits';
-    if (form.vat_number && !VAT_RE.test(form.vat_number))
+    if (!form.vat_number?.trim()) e.vat_number = 'Required';
+    else if (!VAT_RE.test(form.vat_number))
       e.vat_number = 'VAT must be 15 digits starting and ending with 3';
     if (!PHONE_RE.test(form.phone)) e.phone = 'Format: +9665XXXXXXXX';
     if (form.iban && !IBAN_RE.test(form.iban)) e.iban = 'IBAN: SA + 22 digits';
@@ -275,7 +276,7 @@ export function VendorModal({ vendor, canEdit, onClose, onSaved }: Props) {
                   placeholder="1010101010"
                 />
               </Field>
-              <Field label="VAT Registration No." error={errors.vat_number}>
+              <Field label="VAT Registration No. *" error={errors.vat_number}>
                 <input
                   className="input font-mono"
                   value={form.vat_number}

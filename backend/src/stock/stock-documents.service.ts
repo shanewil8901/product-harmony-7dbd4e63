@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
+import { Vendor } from '../vendors/vendor.entity';
 import { ALLOWED_FROM, DOC_TYPE_PREFIX, DOC_TYPE_TO_STATUS } from './lifecycle';
 import { StockHistoryService } from './stock-history.service';
 
@@ -99,6 +100,36 @@ export class StockDocumentsService {
         if (!allowed.includes(stock.status)) {
           throw new BadRequestException(
             `Cannot generate ${docType} while stock is "${stock.status}". Allowed from: ${allowed.join(', ')}.`,
+          );
+        }
+      }
+
+      // Mandatory data gate: from the PO stage onwards a stock row must carry a
+      // real registered vendor and an expiry date — no placeholders, no nulls.
+      const REQUIRES_COMPLETE_DATA: StockDocType[] = [
+        'po',
+        'vendor_invoice',
+        'payment',
+        'shipping',
+        'customs_clearance',
+        'dispatch',
+        'grn',
+        'putaway',
+        'sales_invoice',
+        'payment_receipt',
+      ];
+      if (REQUIRES_COMPLETE_DATA.includes(docType)) {
+        const missing: string[] = [];
+        if (!stock.vendor_id || !stock.vendor_name) missing.push('vendor');
+        else {
+          const vendor = await mgr.findOne(Vendor, { where: { id: stock.vendor_id } });
+          if (!vendor) missing.push('a registered vendor (current vendor is not in the system)');
+          else if (vendor.status !== 'active') missing.push('an active vendor');
+        }
+        if (!stock.expiry_date) missing.push('expiry date');
+        if (missing.length) {
+          throw new BadRequestException(
+            `Cannot generate the ${docType} document — this stock is missing: ${missing.join(', ')}. Update the stock record first.`,
           );
         }
       }

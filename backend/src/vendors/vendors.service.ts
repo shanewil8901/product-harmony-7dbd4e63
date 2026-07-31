@@ -53,7 +53,14 @@ export class VendorsService {
     return v;
   }
 
+  /** ZATCA compliance: a registered vendor must always carry a VAT number. */
+  private assertCompliance(vat?: string | null) {
+    if (!vat || !vat.trim())
+      throw new BadRequestException('VAT registration number is required for vendors');
+  }
+
   async create(dto: CreateVendorDto, userEmail: string) {
+    this.assertCompliance(dto.vat_number);
     const dupe = await this.repo.findOne({ where: { cr_number: dto.cr_number } });
     if (dupe) throw new ConflictException('A vendor with this CR number already exists');
     const code = await this.nextCode();
@@ -77,6 +84,7 @@ export class VendorsService {
       if (dupe && dupe.id !== id) throw new ConflictException('CR number already in use');
     }
     Object.assign(v, dto, { updated_by: userEmail });
+    this.assertCompliance(v.vat_number);
     return this.repo.save(v);
   }
 

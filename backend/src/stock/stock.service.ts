@@ -6,6 +6,7 @@ import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
 import { QueryStockDto } from './dto/query-stock.dto';
 import { Product } from '../products/product.entity';
+import { Vendor } from '../vendors/vendor.entity';
 import { StockDocumentsService } from './stock-documents.service';
 import type { StockDocument } from './stock-document.entity';
 import { StockHistoryService } from './stock-history.service';
@@ -15,6 +16,7 @@ export class StockService {
   constructor(
     @InjectRepository(Stock) private readonly repo: Repository<Stock>,
     @InjectRepository(Product) private readonly productRepo: Repository<Product>,
+    @InjectRepository(Vendor) private readonly vendorRepo: Repository<Vendor>,
     private readonly documents: StockDocumentsService,
     private readonly history: StockHistoryService,
   ) {}
@@ -114,6 +116,23 @@ export class StockService {
     return this.enrich(s);
   }
 
+  /** Vendor must exist, be active, and not be soft-deleted — no placeholders allowed. */
+  private async requireVendor(vendorId: string | null | undefined) {
+    if (!vendorId) throw new BadRequestException('Vendor is required — select a registered vendor');
+    const vendor = await this.vendorRepo.findOne({ where: { id: vendorId } });
+    if (!vendor)
+      throw new BadRequestException('Unknown vendor — only registered vendors can be used');
+    if (vendor.status !== 'active')
+      throw new BadRequestException(`Vendor "${vendor.legal_name}" is not active`);
+    return vendor;
+  }
+
+  private assertDates(manufacture: string | null, expiry: string | null) {
+    if (!expiry) throw new BadRequestException('Expiry date is required');
+    if (manufacture && new Date(expiry) <= new Date(manufacture))
+      throw new BadRequestException('Expiry date must be after the manufacture date');
+  }
+
   async create(
     dto: CreateStockDto,
     userEmail: string,
@@ -121,10 +140,13 @@ export class StockService {
     const product = await this.productRepo.findOne({ where: { id: dto.product_id } });
     if (!product) throw new BadRequestException('Invalid product_id');
 
+    const vendor = await this.requireVendor(dto.vendor_id);
+    this.assertDates(dto.manufacture_date ?? null, dto.expiry_date ?? null);
+
     const entity = this.repo.create({
       product_id: dto.product_id,
-      vendor_id: dto.vendor_id ?? 'TBD',
-      vendor_name: dto.vendor_name ?? 'Vendor TBD',
+      vendor_id: vendor.id,
+      vendor_name: vendor.legal_name,
       batch_no: dto.batch_no ?? null,
       qty: dto.qty.toFixed(3),
       qty_uom_id: dto.qty_uom_id ?? product.base_uom_id,
@@ -135,7 +157,7 @@ export class StockService {
       selling_price_snapshot: product.sellingPrice,
       selling_currency_id_snapshot: product.selling_currency_id,
       manufacture_date: dto.manufacture_date ?? null,
-      expiry_date: dto.expiry_date ?? null,
+      expiry_date: dto.expiry_date,
       ordered_at: dto.ordered_at ? new Date(dto.ordered_at) : new Date(),
       // New procurement lifecycle starts at "inquiry_sent" (auto Inquiry doc).
       status: 'inquiry_sent',
@@ -162,15 +184,25 @@ export class StockService {
     const s = await this.findOne(id);
     const before: Partial<Stock> = { ...s };
     // Status is document-driven — strip it if a client sends it anyway.
-    const { qty, ordered_at, ...rest } = dto;
+    const { qty, ordered_at, vendor_id, vendor_name, ...rest } = dto;
     delete (rest as Record<string, unknown>).status;
     Object.assign(s, rest, { updated_by: userEmail });
+
+    // Vendor can be changed, but never cleared or set to an unregistered value.
+    if (vendor_id !== undefined) {
+      const vendor = await this.requireVendor(vendor_id);
+      s.vendor_id = vendor.id;
+      s.vendor_name = vendor.legal_name;
+    }
+    this.assertDates(s.manufacture_date ?? null, s.expiry_date ?? null);
+
     if (qty !== undefined) s.qty = qty.toFixed(3);
     if (ordered_at !== undefined) s.ordered_at = ordered_at ? new Date(ordered_at) : null;
     const saved = await this.repo.save(s);
     await this.history.logUpdate(id, before, saved, userEmail);
     return saved;
   }
+
 
   async remove(id: string, userEmail: string) {
     const s = await this.findOne(id);
