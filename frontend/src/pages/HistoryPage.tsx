@@ -36,6 +36,10 @@ export function HistoryPage() {
   const [entries, setEntries] = useState<ProductHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [productQuery, setProductQuery] = useState('');
+  const [productLoading, setProductLoading] = useState(false);
+  const [actionFilter, setActionFilter] = useState('');
+  const [userFilter, setUserFilter] = useState('');
 
   const labelForId = useMemo(() => {
     const map: Record<string, string> = {};
@@ -51,12 +55,28 @@ export function HistoryPage() {
     return String(value);
   };
 
+  // Typeable autocomplete — products are queried from the database as the user types.
   useEffect(() => {
-    productsService.list({ limit: 100 }).then((r) => {
-      setProducts(r.items);
-      if (r.items.length > 0) setSelected(r.items[0].id);
-    });
-  }, []);
+    let cancelled = false;
+    setProductLoading(true);
+    const t = setTimeout(() => {
+      productsService
+        .list({ search: productQuery || undefined, limit: 50 })
+        .then((r) => {
+          if (cancelled) return;
+          setProducts(r.items);
+          setSelected((cur) => cur || (r.items.length > 0 ? r.items[0].id : ''));
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) setProductLoading(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [productQuery]);
 
   useEffect(() => {
     if (!selected) return;
@@ -71,6 +91,45 @@ export function HistoryPage() {
 
   const product = useMemo(() => products.find((p) => p.id === selected), [products, selected]);
 
+  const productOptions: ComboOption[] = useMemo(
+    () =>
+      products.map((p) => ({
+        value: p.id,
+        label: p.productCode,
+        hint: p.description,
+        keywords: p.product_barcode ?? '',
+      })),
+    [products],
+  );
+
+  const actionOptions: ComboOption[] = useMemo(
+    () =>
+      [...new Set(entries.map((e) => e.action))].map((a) => ({
+        value: a,
+        label: a === 'create' ? 'Created' : a === 'delete' ? 'Deleted' : 'Updated',
+      })),
+    [entries],
+  );
+
+  const userOptions: ComboOption[] = useMemo(
+    () =>
+      [...new Set(entries.map((e) => e.changed_by).filter(Boolean) as string[])].map((u) => ({
+        value: u,
+        label: u,
+      })),
+    [entries],
+  );
+
+  const visible = useMemo(
+    () =>
+      entries.filter(
+        (e) =>
+          (!actionFilter || e.action === actionFilter) &&
+          (!userFilter || e.changed_by === userFilter),
+      ),
+    [entries, actionFilter, userFilter],
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -80,16 +139,41 @@ export function HistoryPage() {
         </p>
       </div>
 
-      <div className="card p-4">
-        <label className="label">Product</label>
-        <select className="input" value={selected} onChange={(e) => setSelected(e.target.value)}>
-          <option value="">Select product</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.productCode} — {p.description.slice(0, 60)}
-            </option>
-          ))}
-        </select>
+      <div className="card p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label className="label">Product</label>
+          <Combobox
+            options={productOptions}
+            value={selected}
+            onChange={setSelected}
+            onQueryChange={setProductQuery}
+            loading={productLoading}
+            placeholder="Type a product code or description…"
+            emptyLabel="No matching product"
+          />
+        </div>
+        <div>
+          <label className="label">Filter by action</label>
+          <Combobox
+            options={actionOptions}
+            value={actionFilter}
+            onChange={setActionFilter}
+            allowClear
+            clearLabel="All actions"
+            placeholder="Type to search actions…"
+          />
+        </div>
+        <div>
+          <label className="label">Filter by user</label>
+          <Combobox
+            options={userOptions}
+            value={userFilter}
+            onChange={setUserFilter}
+            allowClear
+            clearLabel="All users"
+            placeholder="Type to search users…"
+          />
+        </div>
       </div>
 
       {error && (
@@ -121,10 +205,10 @@ export function HistoryPage() {
               {loading && (
                 <tr><td colSpan={4} className="py-8 text-center text-brown-500">Loading…</td></tr>
               )}
-              {!loading && entries.length === 0 && (
-                <tr><td colSpan={4} className="py-12 text-center text-brown-500">No history yet.</td></tr>
+              {!loading && visible.length === 0 && (
+                <tr><td colSpan={4} className="py-12 text-center text-brown-500">No history entries match these filters.</td></tr>
               )}
-              {!loading && entries.map((e) => (
+              {!loading && visible.map((e) => (
                 <tr key={e.id} className="align-top hover:bg-paper-soft">
                   <td className="px-4 py-3 whitespace-nowrap text-brown-500">
                     {new Date(e.changed_at).toLocaleString()}
