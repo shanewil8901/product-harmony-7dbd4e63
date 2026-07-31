@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { productsService } from '../services/products.service';
 import { useMasterData } from '../hooks/useMasterData';
+import { Combobox, type ComboOption } from '../components/Combobox';
 import type { Product } from '../types/product';
 import type { ProductHistoryEntry } from '../types/stock';
+
 
 const FIELD_LABELS: Record<string, string> = {
   description: 'Description',
