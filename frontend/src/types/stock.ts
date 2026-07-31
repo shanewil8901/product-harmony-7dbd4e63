@@ -93,11 +93,14 @@ export interface StockInput {
   product_id: string;
   qty: number;
   qty_uom_id?: string;
-  vendor_id?: string;
+  /** Required — only registered, active vendors are accepted by the API. */
+  vendor_id: string;
   vendor_name?: string;
   batch_no?: string;
   manufacture_date?: string;
-  expiry_date?: string;
+  /** Required — enforced from the PO stage onwards. */
+  expiry_date: string;
+
   ordered_at?: string;
   notes?: string;
 }
