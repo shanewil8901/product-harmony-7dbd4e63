@@ -28,13 +28,12 @@ export class CreateStockDto {
   @IsUUID()
   qty_uom_id?: string;
 
-  @ApiPropertyOptional({ description: 'Vendor placeholder id (vendor module TBD)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(36)
-  vendor_id?: string;
+  @ApiProperty({ description: 'Registered vendor id — must exist and be active' })
+  @IsUUID(undefined, { message: 'Vendor is required — select a registered vendor' })
+  vendor_id!: string;
 
-  @ApiPropertyOptional({ description: 'Vendor display name (vendor module TBD)' })
+  /** Ignored if sent — always resolved from the vendor record on the server. */
+  @ApiPropertyOptional({ description: 'Resolved server-side from the vendor record' })
   @IsOptional()
   @IsString()
   @MaxLength(255)
@@ -51,10 +50,11 @@ export class CreateStockDto {
   @IsDateString()
   manufacture_date?: string;
 
-  @ApiPropertyOptional({ example: '2027-01-15', description: 'YYYY-MM-DD' })
-  @IsOptional()
-  @IsDateString()
-  expiry_date?: string;
+  @ApiProperty({ example: '2027-01-15', description: 'YYYY-MM-DD — required' })
+  @IsDateString({}, { message: 'Expiry date is required (YYYY-MM-DD)' })
+  expiry_date!: string;
+
+
 
   @ApiPropertyOptional({ example: '2026-07-23T10:00:00.000Z' })
   @IsOptional()
