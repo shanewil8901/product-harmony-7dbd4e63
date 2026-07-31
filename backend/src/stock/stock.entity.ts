@@ -61,7 +61,7 @@ export class Stock {
   @JoinColumn({ name: 'product_id' })
   product?: Product | null;
 
-  /** Vendor module isn't built yet — free-text placeholder (e.g. "TBD"). */
+  /** Registered vendor id — enforced non-empty and validated against the vendors table. */
   @Column({ name: 'vendor_id', type: 'varchar', length: 36, nullable: true })
   vendor_id!: string | null;
 
