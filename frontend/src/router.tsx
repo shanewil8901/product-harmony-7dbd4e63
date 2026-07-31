@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { UsersPage } from './pages/UsersPage';
 import { StockPage } from './pages/StockPage';
@@ -20,7 +21,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/products" replace /> },
+      { index: true, element: <DashboardPage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'stock', element: <StockPage /> },
       { path: 'vendors', element: <VendorsPage /> },

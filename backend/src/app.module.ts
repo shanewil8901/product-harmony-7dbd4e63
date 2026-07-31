@@ -9,6 +9,7 @@ import { BarcodesModule } from './barcodes/barcodes.module';
 import { StockModule } from './stock/stock.module';
 import { VendorsModule } from './vendors/vendors.module';
 import { CustomersModule } from './customers/customers.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 
 
@@ -37,6 +38,7 @@ import { CustomersModule } from './customers/customers.module';
     StockModule,
     VendorsModule,
     CustomersModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
