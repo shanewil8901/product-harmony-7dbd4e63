@@ -10,6 +10,7 @@ export function DashboardLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
+    { to: '/', label: 'Dashboard' },
     { to: '/products', label: 'Products' },
     { to: '/stock', label: 'Stock' },
     { to: '/vendors', label: 'Vendors' },
@@ -34,7 +35,7 @@ export function DashboardLayout() {
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((n) => (
-              <NavItem key={n.to} to={n.to}>
+              <NavItem key={n.to} to={n.to} end={n.to === '/'}>
                 {n.label}
               </NavItem>
             ))}
@@ -84,6 +85,7 @@ export function DashboardLayout() {
                 <NavLink
                   key={n.to}
                   to={n.to}
+                  end={n.to === '/'}
                   onClick={closeMobile}
                   className={({ isActive }) =>
                     `px-3 py-2 rounded-lg text-sm font-medium ${
@@ -123,10 +125,11 @@ export function DashboardLayout() {
   );
 }
 
-function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
+function NavItem({ to, children, end }: { to: string; children: React.ReactNode; end?: boolean }) {
   return (
     <NavLink
       to={to}
+      end={end}
       className={({ isActive }) =>
         `px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
           isActive
