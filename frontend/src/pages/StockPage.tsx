@@ -235,7 +235,7 @@ export function StockPage() {
                       </div>
                     </Td>
                     <Td>
-                      <div>{s.vendor_name ?? 'Vendor TBD'}</div>
+                      <div>{s.vendor_name}</div>
                     </Td>
                     <Td className="font-mono text-xs">{s.batch_no ?? '—'}</Td>
                     <Td align="right">
@@ -431,6 +431,14 @@ function StockModal({ products, onClose, onSubmit }: ModalProps) {
       setErr('Vendor is required — pick one from the list');
       return;
     }
+    if (!exp) {
+      setErr('Expiry date is required');
+      return;
+    }
+    if (mfg && new Date(exp) <= new Date(mfg)) {
+      setErr('Expiry date must be after the manufacture date');
+      return;
+    }
     setSubmitting(true);
     setErr(null);
     try {
@@ -442,7 +450,7 @@ function StockModal({ products, onClose, onSubmit }: ModalProps) {
         vendor_name: selectedVendor?.legal_name,
         batch_no: batchNo || undefined,
         manufacture_date: mfg || undefined,
-        expiry_date: exp || undefined,
+        expiry_date: exp,
         notes: notes || undefined,
       });
     } catch (e2: unknown) {
@@ -556,7 +564,7 @@ function StockModal({ products, onClose, onSubmit }: ModalProps) {
             <input className="input" type="date" value={mfg} onChange={(e) => setMfg(e.target.value)} />
           </div>
           <div>
-            <label className="label">Expiry date</label>
+            <label className="label">Expiry date *</label>
             <input className="input" type="date" value={exp} onChange={(e) => setExp(e.target.value)} />
           </div>
         </div>
