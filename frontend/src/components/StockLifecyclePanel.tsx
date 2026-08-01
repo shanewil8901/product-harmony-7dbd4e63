@@ -436,15 +436,26 @@ function StageForm({
 
   const config = STAGE_FIELDS[docType];
   const needsMoney = MONEY_STAGES.has(docType);
+  const amountRequired = AMOUNT_REQUIRED_STAGES.has(docType);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const payload: Record<string, unknown> = {};
+    const missing: string[] = [];
     for (const f of config) {
       const v = fields[f.name]?.trim();
       if (v) payload[f.name] = v;
+      else if (f.required) missing.push(f.label);
+    }
+    if (missing.length) {
+      setFormError(`Required: ${missing.join(', ')}.`);
+      return;
     }
     const money: { total_amount?: number; currency_code?: string } = {};
+    if (amountRequired && !amount.trim()) {
+      setFormError('Total amount is required for this stage.');
+      return;
+    }
     if (needsMoney && amount.trim()) {
       if (!currency) {
         setFormError('Currency is required for the total amount.');
@@ -473,7 +484,10 @@ function StageForm({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {config.map((f) => (
             <div key={f.name} className={f.full ? 'sm:col-span-2' : ''}>
-              <label className="label">{f.label}</label>
+              <label className="label">
+                {f.label}
+                {f.required && <span className="text-brown-600"> *</span>}
+              </label>
               {f.options ? (
                 <select
                   className="input"
@@ -501,7 +515,9 @@ function StageForm({
           {needsMoney && (
             <>
               <div>
-                <label className="label">Total amount</label>
+                <label className="label">
+                  Total amount{amountRequired && <span className="text-brown-600"> *</span>}
+                </label>
                 <input
                   className="input"
                   type="number"
@@ -516,7 +532,7 @@ function StageForm({
                 </p>
               </div>
               <div>
-                <label className="label">Currency {amount.trim() ? '*' : ''}</label>
+                <label className="label">Currency {amount.trim() || amountRequired ? '*' : ''}</label>
                 <select
                   className="input"
                   value={currency}
@@ -563,6 +579,7 @@ interface FieldConfig {
   label: string;
   type?: string;
   full?: boolean;
+  required?: boolean;
   options?: { value: string; label: string }[];
 }
 
@@ -591,60 +608,72 @@ const STAGE_FIELDS: Record<StockDocType, FieldConfig[]> = {
     { name: 'notes', label: 'Notes', full: true },
   ],
   quotation: [
-    { name: 'quote_no', label: 'Vendor quotation no.' },
-    { name: 'quote_date', label: 'Quotation date', type: 'date' },
+    { name: 'quote_no', label: 'Vendor quotation no.', required: true },
+    { name: 'quote_date', label: 'Quotation date', type: 'date', required: true },
     { name: 'valid_until', label: 'Valid until', type: 'date' },
   ],
   po: [
+    { name: 'batch_no', label: 'Batch number', required: true },
+    { name: 'manufacture_date', label: 'Manufacture date (MFD)', type: 'date', required: true },
     { name: 'po_no', label: 'PO reference (optional)' },
     { name: 'approved_at', label: 'Approved at', type: 'datetime-local' },
   ],
   vendor_invoice: [
-    { name: 'invoice_no', label: 'Vendor invoice no.' },
-    { name: 'invoice_date', label: 'Invoice date', type: 'date' },
+    { name: 'invoice_no', label: 'Vendor invoice no.', required: true },
+    { name: 'invoice_date', label: 'Invoice date', type: 'date', required: true },
   ],
   payment: [
-    { name: 'payment_method', label: 'Payment method', options: PAYMENT_METHODS },
-    { name: 'reference_no', label: 'Reference / LC / Cheque no.' },
-    { name: 'paid_at', label: 'Paid at', type: 'datetime-local' },
+    { name: 'payment_method', label: 'Payment method', options: PAYMENT_METHODS, required: true },
+    { name: 'reference_no', label: 'Reference / LC / Cheque no.', required: true },
+    { name: 'paid_at', label: 'Paid at', type: 'datetime-local', required: true },
   ],
   shipping: [
-    { name: 'incoterm', label: 'Incoterm', options: INCOTERMS },
-    { name: 'carrier', label: 'Carrier / Shipping line' },
-    { name: 'awb_no', label: 'AWB / BL no.' },
+    { name: 'incoterm', label: 'Incoterm', options: INCOTERMS, required: true },
+    { name: 'carrier', label: 'Carrier / Shipping line', required: true },
+    { name: 'awb_no', label: 'AWB / BL no.', required: true },
     { name: 'eta', label: 'ETA', type: 'date' },
   ],
   customs_clearance: [
-    { name: 'clearance_ref', label: 'Customs clearance reference' },
-    { name: 'port', label: 'Port of entry' },
+    { name: 'clearance_ref', label: 'Customs clearance reference', required: true },
+    { name: 'port', label: 'Port of entry', required: true },
     { name: 'cleared_at', label: 'Cleared at', type: 'datetime-local' },
   ],
   dispatch: [
-    { name: 'carrier', label: 'Carrier' },
-    { name: 'tracking_no', label: 'Tracking no.' },
+    { name: 'carrier', label: 'Carrier', required: true },
+    { name: 'tracking_no', label: 'Tracking no.', required: true },
     { name: 'dispatched_at', label: 'Dispatched at', type: 'datetime-local' },
   ],
   grn: [
-    { name: 'received_qty', label: 'Received qty', type: 'number' },
-    { name: 'received_at', label: 'Received at', type: 'datetime-local' },
+    { name: 'received_qty', label: 'Received qty', type: 'number', required: true },
+    { name: 'received_at', label: 'Received at', type: 'datetime-local', required: true },
     { name: 'notes', label: 'Notes', full: true },
   ],
   putaway: [
-    { name: 'invoice_no', label: 'Supplier invoice no.' },
-    { name: 'location', label: 'Warehouse location' },
+    { name: 'invoice_no', label: 'Supplier invoice no.', required: true },
+    { name: 'location', label: 'Warehouse location', required: true },
   ],
   sales_invoice: [
-    { name: 'invoice_no', label: 'Sales invoice no.' },
-    { name: 'customer', label: 'Customer' },
-    { name: 'sold_qty', label: 'Sold qty', type: 'number' },
+    { name: 'invoice_no', label: 'Sales invoice no.', required: true },
+    { name: 'customer', label: 'Customer', required: true },
+    { name: 'sold_qty', label: 'Sold qty', type: 'number', required: true },
   ],
   payment_receipt: [
-    { name: 'receipt_no', label: 'Receipt no.' },
-    { name: 'received_at', label: 'Received at', type: 'datetime-local' },
+    { name: 'receipt_no', label: 'Receipt no.', required: true },
+    { name: 'received_at', label: 'Received at', type: 'datetime-local', required: true },
   ],
-  write_off: [{ name: 'reason', label: 'Reason', full: true }],
-  cancellation: [{ name: 'reason', label: 'Reason', full: true }],
+  write_off: [{ name: 'reason', label: 'Reason', full: true, required: true }],
+  cancellation: [{ name: 'reason', label: 'Reason', full: true, required: true }],
 };
+
+/** Stages where a total amount + currency must be recorded. */
+const AMOUNT_REQUIRED_STAGES = new Set<StockDocType>([
+  'quotation',
+  'po',
+  'vendor_invoice',
+  'payment',
+  'sales_invoice',
+  'payment_receipt',
+]);
 
 export function StatusBadge({ value }: { value: StockStatus }) {
   const tone: Record<StockStatus, string> = {
