@@ -22,13 +22,21 @@ export class StockDocumentsService {
     private readonly history: StockHistoryService,
   ) {}
 
-  private async nextDocNumber(docType: StockDocType): Promise<string> {
+  /**
+   * Sequence generation runs inside the caller's transaction with a write lock so
+   * two concurrent stage submissions can never mint the same document number.
+   */
+  private async nextDocNumber(
+    docType: StockDocType,
+    mgr: EntityManager = this.repo.manager,
+  ): Promise<string> {
     const prefix = DOC_TYPE_PREFIX[docType];
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const like = `${prefix}-${datePart}-%`;
-    const last = await this.repo
-      .createQueryBuilder('d')
+    const last = await mgr
+      .createQueryBuilder(StockDocument, 'd')
       .withDeleted()
+      .setLock('pessimistic_write')
       .where('d.doc_number LIKE :like', { like })
       .orderBy('d.doc_number', 'DESC')
       .getOne();
@@ -39,6 +47,7 @@ export class StockDocumentsService {
     }
     return `${prefix}-${datePart}-${String(seq).padStart(4, '0')}`;
   }
+
 
   async listForStock(stockId: string) {
     const docs = await this.repo.find({ where: { stock_id: stockId } });
