@@ -130,3 +130,71 @@ export const DOC_TYPE_PREFIX: Record<StockDocType, string> = {
   write_off: 'WO',
   cancellation: 'CN',
 };
+
+/**
+ * Mandatory payload fields per lifecycle stage.
+ * These are the reference/bill numbers and dates that a real procurement audit
+ * trail cannot be missing — the document is rejected if any of them is blank.
+ */
+export const STAGE_REQUIRED_FIELDS: Record<StockDocType, { name: string; label: string }[]> = {
+  inquiry: [],
+  quotation: [
+    { name: 'quote_no', label: 'Vendor quotation no.' },
+    { name: 'quote_date', label: 'Quotation date' },
+  ],
+  po: [
+    { name: 'batch_no', label: 'Batch number' },
+    { name: 'manufacture_date', label: 'Manufacture date (MFD)' },
+  ],
+  vendor_invoice: [
+    { name: 'invoice_no', label: 'Vendor invoice no.' },
+    { name: 'invoice_date', label: 'Invoice date' },
+  ],
+  payment: [
+    { name: 'payment_method', label: 'Payment method' },
+    { name: 'reference_no', label: 'Reference / LC / Cheque no.' },
+    { name: 'paid_at', label: 'Paid at' },
+  ],
+  shipping: [
+    { name: 'incoterm', label: 'Incoterm' },
+    { name: 'carrier', label: 'Carrier / Shipping line' },
+    { name: 'awb_no', label: 'AWB / BL no.' },
+  ],
+  customs_clearance: [
+    { name: 'clearance_ref', label: 'Customs clearance reference' },
+    { name: 'port', label: 'Port of entry' },
+  ],
+  dispatch: [
+    { name: 'carrier', label: 'Carrier' },
+    { name: 'tracking_no', label: 'Tracking no.' },
+  ],
+  grn: [
+    { name: 'received_qty', label: 'Received qty' },
+    { name: 'received_at', label: 'Received at' },
+  ],
+  putaway: [
+    { name: 'invoice_no', label: 'Supplier invoice no.' },
+    { name: 'location', label: 'Warehouse location' },
+  ],
+  sales_invoice: [
+    { name: 'invoice_no', label: 'Sales invoice no.' },
+    { name: 'customer', label: 'Customer' },
+    { name: 'sold_qty', label: 'Sold qty' },
+  ],
+  payment_receipt: [
+    { name: 'receipt_no', label: 'Receipt no.' },
+    { name: 'received_at', label: 'Received at' },
+  ],
+  write_off: [{ name: 'reason', label: 'Reason' }],
+  cancellation: [{ name: 'reason', label: 'Reason' }],
+};
+
+/** Stages that must record a monetary total (amount + currency). */
+export const STAGES_REQUIRING_AMOUNT: StockDocType[] = [
+  'quotation',
+  'po',
+  'vendor_invoice',
+  'payment',
+  'sales_invoice',
+  'payment_receipt',
+];
