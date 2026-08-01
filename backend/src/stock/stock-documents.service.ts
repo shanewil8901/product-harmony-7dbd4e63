@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { Vendor } from '../vendors/vendor.entity';
@@ -97,7 +97,10 @@ export class StockDocumentsService {
     } = {},
   ): Promise<{ document: StockDocument; stock: Stock }> {
     return this.dataSource.transaction(async (mgr) => {
-      const stock = await mgr.findOne(Stock, { where: { id: stockId } });
+      const stock = await mgr.findOne(Stock, {
+        where: { id: stockId },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!stock) throw new NotFoundException('Stock not found');
 
       // Prevent duplicates: each doc_type may only be generated once per stock row.
@@ -195,7 +198,7 @@ export class StockDocumentsService {
       }
 
 
-      const doc_number = await this.nextDocNumber(docType);
+      const doc_number = await this.nextDocNumber(docType, mgr);
       const doc = mgr.create(StockDocument, {
         stock_id: stockId,
         doc_type: docType,
