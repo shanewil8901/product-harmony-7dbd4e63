@@ -8,6 +8,8 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
+
 
 /**
  * Structured error envelope:
