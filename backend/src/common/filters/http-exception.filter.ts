@@ -47,10 +47,33 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Database-level failures (unique / foreign-key / not-null violations) must
+    // reach the user as a clear, actionable message — never an opaque 500.
+    const dbError = describeDbError(exception);
+    if (dbError) {
+      status = dbError.status;
+      this.logger.error(
+        `${req.method} ${req.url} → ${status} ${dbError.code}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+      res.status(status).json({
+        success: false,
+        statusCode: status,
+        path: req.url,
+        timestamp: new Date().toISOString(),
+        error: { code: dbError.code, message: dbError.message },
+      });
+      return;
+    }
+
     const raw =
       exception instanceof HttpException
         ? exception.getResponse()
-        : { message: 'Internal server error' };
+        : {
+            message:
+              'Something went wrong on the server. Please try again — if it keeps happening, contact your administrator.',
+          };
+
 
     let message: string;
     let details: Array<{ field?: string; message: string }> | undefined;
