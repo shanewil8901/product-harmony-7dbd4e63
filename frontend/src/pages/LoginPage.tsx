@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type { ApiError } from '../services/api';
 import { EMAIL_RE, HELP } from '../lib/validators';
+import { SplashScreen } from '../components/SplashScreen';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [splash, setSplash] = useState(false);
 
   const validate = () => {
     const e: typeof errors = {};
@@ -29,7 +31,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/products');
+      setSplash(true);
     } catch (err: unknown) {
       const apiErr = err as ApiError;
       const status = apiErr.response?.status;
@@ -42,6 +44,10 @@ export function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (splash) {
+    return <SplashScreen name={user?.name} onDone={() => navigate('/', { replace: true })} />;
+  }
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-paper-soft">
