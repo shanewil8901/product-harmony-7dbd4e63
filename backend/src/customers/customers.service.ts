@@ -22,8 +22,11 @@ export class CustomersService {
   ) {}
 
   async findAll(q: { search?: string; status?: string; customer_type?: string; page?: number; limit?: number }) {
-    const page = q.page ?? 1;
-    const limit = q.limit ?? 20;
+    // Guard against NaN / negative / oversized paging values from raw query strings.
+    const page = Number.isFinite(Number(q.page)) && Number(q.page) > 0 ? Math.floor(Number(q.page)) : 1;
+    const limit = Number.isFinite(Number(q.limit)) && Number(q.limit) > 0
+      ? Math.min(Math.floor(Number(q.limit)), 100)
+      : 20;
     const qb = this.repo.createQueryBuilder('c').leftJoinAndSelect('c.currency', 'currency');
     if (q.status) qb.andWhere('c.status = :status', { status: q.status });
     if (q.customer_type) qb.andWhere('c.customer_type = :ct', { ct: q.customer_type });
@@ -150,7 +153,8 @@ export class CustomersService {
     const last = await this.repo
       .createQueryBuilder('c')
       .select('c.code', 'code')
-      .orderBy('c.created_at', 'DESC')
+      .setLock('pessimistic_write')
+      .orderBy('c.code', 'DESC')
       .limit(1)
       .getRawOne<{ code: string }>();
     const next = last?.code ? Number(last.code.replace(/\D/g, '')) + 1 : 1;
