@@ -140,10 +140,51 @@ export class StockDocumentsService {
         }
       }
 
+      // Mandatory payload fields for this stage (bill/reference numbers, dates, …).
+      const required = STAGE_REQUIRED_FIELDS[docType] ?? [];
+      const blank = required.filter((f) => {
+        const v = (payload ?? {})[f.name];
+        return v === undefined || v === null || String(v).trim() === '';
+      });
+      if (blank.length) {
+        throw new BadRequestException(
+          `Cannot generate the ${docType} document — required: ${blank.map((f) => f.label).join(', ')}.`,
+        );
+      }
+
+      // Batch number and manufacture date are captured at the PO stage and must
+      // stay present for every downstream stage.
+      if (docType === 'po') {
+        stock.batch_no = String((payload as Record<string, unknown>).batch_no).trim();
+        stock.manufacture_date = String(
+          (payload as Record<string, unknown>).manufacture_date,
+        ).trim() as never;
+      } else if (REQUIRES_COMPLETE_DATA.includes(docType)) {
+        const gaps: string[] = [];
+        if (!stock.batch_no) gaps.push('batch number');
+        if (!stock.manufacture_date) gaps.push('manufacture date');
+        if (gaps.length) {
+          throw new BadRequestException(
+            `Cannot generate the ${docType} document — this stock is missing: ${gaps.join(', ')}. These are captured at the Purchase Order stage.`,
+          );
+        }
+      }
+
       // Currency is mandatory as soon as a monetary total is recorded.
       if (opts.total_amount !== undefined && !opts.currency_code) {
         throw new BadRequestException('currency_code is required when a total amount is provided');
       }
+      if (STAGES_REQUIRING_AMOUNT.includes(docType)) {
+        if (opts.total_amount === undefined || !(opts.total_amount >= 0)) {
+          throw new BadRequestException(
+            `Cannot generate the ${docType} document — a total amount is required.`,
+          );
+        }
+        if (!opts.currency_code) {
+          throw new BadRequestException('Currency is required for the total amount.');
+        }
+      }
+
 
       const doc_number = await this.nextDocNumber(docType);
       const doc = mgr.create(StockDocument, {
