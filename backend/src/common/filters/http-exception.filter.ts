@@ -8,6 +8,8 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { QueryFailedError } from 'typeorm';
+
 
 /**
  * Structured error envelope:
@@ -47,10 +49,33 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Database-level failures (unique / foreign-key / not-null violations) must
+    // reach the user as a clear, actionable message — never an opaque 500.
+    const dbError = describeDbError(exception);
+    if (dbError) {
+      status = dbError.status;
+      this.logger.error(
+        `${req.method} ${req.url} → ${status} ${dbError.code}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+      res.status(status).json({
+        success: false,
+        statusCode: status,
+        path: req.url,
+        timestamp: new Date().toISOString(),
+        error: { code: dbError.code, message: dbError.message },
+      });
+      return;
+    }
+
     const raw =
       exception instanceof HttpException
         ? exception.getResponse()
-        : { message: 'Internal server error' };
+        : {
+            message:
+              'Something went wrong on the server. Please try again — if it keeps happening, contact your administrator.',
+          };
+
 
     let message: string;
     let details: Array<{ field?: string; message: string }> | undefined;
@@ -97,3 +122,77 @@ export class HttpExceptionFilter implements ExceptionFilter {
     });
   }
 }
+
+/**
+ * Translate raw driver/ORM failures into user-facing messages.
+ * Returns `undefined` when the exception is not a database error.
+ */
+function describeDbError(
+  exception: unknown,
+): { status: number; code: string; message: string } | undefined {
+  if (!(exception instanceof QueryFailedError)) return undefined;
+  const driver = exception as QueryFailedError & {
+    code?: string;
+    errno?: number;
+    sqlMessage?: string;
+  };
+  const errno = driver.errno;
+  const sqlMessage = driver.sqlMessage ?? exception.message ?? '';
+
+  // MySQL: 1062 duplicate entry, 1451/1452 FK constraint, 1048 not-null, 1406 too long.
+  if (errno === 1062 || driver.code === 'ER_DUP_ENTRY') {
+    const value = /Duplicate entry '([^']*)'/.exec(sqlMessage)?.[1];
+    return {
+      status: HttpStatus.CONFLICT,
+      code: 'CONFLICT',
+      message: value
+        ? `"${value}" already exists. Use a different value.`
+        : 'This record already exists. Use a different value.',
+    };
+  }
+  if (errno === 1452 || driver.code === 'ER_NO_REFERENCED_ROW_2') {
+    return {
+      status: HttpStatus.BAD_REQUEST,
+      code: 'BAD_REQUEST',
+      message:
+        'One of the selected records no longer exists. Refresh the page and pick a valid option.',
+    };
+  }
+  if (errno === 1451 || driver.code === 'ER_ROW_IS_REFERENCED_2') {
+    return {
+      status: HttpStatus.CONFLICT,
+      code: 'CONFLICT',
+      message:
+        'This record is still used by other records (stock, documents or attachments) and cannot be deleted.',
+    };
+  }
+  if (errno === 1048 || driver.code === 'ER_BAD_NULL_ERROR') {
+    const field = /Column '([^']*)'/.exec(sqlMessage)?.[1];
+    return {
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      code: 'VALIDATION_ERROR',
+      message: field ? `"${field}" is required and cannot be empty.` : 'A required field is empty.',
+    };
+  }
+  if (errno === 1406 || driver.code === 'ER_DATA_TOO_LONG') {
+    const field = /column '([^']*)'/i.exec(sqlMessage)?.[1];
+    return {
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      code: 'VALIDATION_ERROR',
+      message: field ? `"${field}" is too long — shorten it.` : 'One of the values is too long.',
+    };
+  }
+  if (errno === 1213 || driver.code === 'ER_LOCK_DEADLOCK') {
+    return {
+      status: HttpStatus.CONFLICT,
+      code: 'CONFLICT',
+      message: 'Another user was updating the same record. Please retry.',
+    };
+  }
+  return {
+    status: HttpStatus.BAD_REQUEST,
+    code: 'BAD_REQUEST',
+    message: 'The database rejected this request. Check the entered values and try again.',
+  };
+}
+

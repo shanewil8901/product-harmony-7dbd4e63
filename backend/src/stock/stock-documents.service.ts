@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { Vendor } from '../vendors/vendor.entity';
@@ -22,13 +22,21 @@ export class StockDocumentsService {
     private readonly history: StockHistoryService,
   ) {}
 
-  private async nextDocNumber(docType: StockDocType): Promise<string> {
+  /**
+   * Sequence generation runs inside the caller's transaction with a write lock so
+   * two concurrent stage submissions can never mint the same document number.
+   */
+  private async nextDocNumber(
+    docType: StockDocType,
+    mgr: EntityManager = this.repo.manager,
+  ): Promise<string> {
     const prefix = DOC_TYPE_PREFIX[docType];
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const like = `${prefix}-${datePart}-%`;
-    const last = await this.repo
-      .createQueryBuilder('d')
+    const last = await mgr
+      .createQueryBuilder(StockDocument, 'd')
       .withDeleted()
+      .setLock('pessimistic_write')
       .where('d.doc_number LIKE :like', { like })
       .orderBy('d.doc_number', 'DESC')
       .getOne();
@@ -39,6 +47,7 @@ export class StockDocumentsService {
     }
     return `${prefix}-${datePart}-${String(seq).padStart(4, '0')}`;
   }
+
 
   async listForStock(stockId: string) {
     const docs = await this.repo.find({ where: { stock_id: stockId } });
@@ -88,7 +97,10 @@ export class StockDocumentsService {
     } = {},
   ): Promise<{ document: StockDocument; stock: Stock }> {
     return this.dataSource.transaction(async (mgr) => {
-      const stock = await mgr.findOne(Stock, { where: { id: stockId } });
+      const stock = await mgr.findOne(Stock, {
+        where: { id: stockId },
+        lock: { mode: 'pessimistic_write' },
+      });
       if (!stock) throw new NotFoundException('Stock not found');
 
       // Prevent duplicates: each doc_type may only be generated once per stock row.
@@ -142,9 +154,12 @@ export class StockDocumentsService {
 
       // Mandatory payload fields for this stage (bill/reference numbers, dates, …).
       const required = STAGE_REQUIRED_FIELDS[docType] ?? [];
+      const raw = (payload ?? {}) as Record<string, unknown>;
       const blank = required.filter((f) => {
-        const v = (payload ?? {})[f.name];
-        return v === undefined || v === null || String(v).trim() === '';
+        const v = raw[f.name];
+        return (
+          v === undefined || v === null || typeof v === 'object' || String(v).trim() === ''
+        );
       });
       if (blank.length) {
         throw new BadRequestException(
@@ -152,14 +167,36 @@ export class StockDocumentsService {
         );
       }
 
+      // Type sanity: date-ish fields must be real dates, qty-ish fields real numbers.
+      const badFields: string[] = [];
+      for (const f of required) {
+        const value = String(raw[f.name]).trim();
+        if (/(_date|_at)$/.test(f.name) && Number.isNaN(Date.parse(value))) {
+          badFields.push(`${f.label} must be a valid date`);
+        }
+        if (/(_qty|amount)$/.test(f.name) && !(Number(value) >= 0)) {
+          badFields.push(`${f.label} must be a number of 0 or more`);
+        }
+      }
+      if (badFields.length) {
+        throw new BadRequestException(
+          `Cannot generate the ${docType} document — ${badFields.join('; ')}.`,
+        );
+      }
+
       // Batch number and manufacture date are captured at the PO stage and must
       // stay present for every downstream stage.
       if (docType === 'po') {
-        stock.batch_no = String((payload as Record<string, unknown>).batch_no).trim();
-        stock.manufacture_date = String(
-          (payload as Record<string, unknown>).manufacture_date,
-        ).trim() as never;
+        const mfd = new Date(String(raw.manufacture_date).trim());
+        if (stock.expiry_date && new Date(stock.expiry_date) <= mfd) {
+          throw new BadRequestException(
+            'Manufacture date must be earlier than the expiry date on this stock.',
+          );
+        }
+        stock.batch_no = String(raw.batch_no).trim();
+        stock.manufacture_date = mfd.toISOString().slice(0, 10) as never;
       } else if (REQUIRES_COMPLETE_DATA.includes(docType)) {
+
         const gaps: string[] = [];
         if (!stock.batch_no) gaps.push('batch number');
         if (!stock.manufacture_date) gaps.push('manufacture date');
@@ -186,7 +223,7 @@ export class StockDocumentsService {
       }
 
 
-      const doc_number = await this.nextDocNumber(docType);
+      const doc_number = await this.nextDocNumber(docType, mgr);
       const doc = mgr.create(StockDocument, {
         stock_id: stockId,
         doc_type: docType,

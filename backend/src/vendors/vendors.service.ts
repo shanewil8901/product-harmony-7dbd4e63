@@ -23,8 +23,11 @@ export class VendorsService {
   ) {}
 
   async findAll(q: { search?: string; status?: string; page?: number; limit?: number }) {
-    const page = q.page ?? 1;
-    const limit = q.limit ?? 20;
+    // Guard against NaN / negative / oversized paging values from raw query strings.
+    const page = Number.isFinite(Number(q.page)) && Number(q.page) > 0 ? Math.floor(Number(q.page)) : 1;
+    const limit = Number.isFinite(Number(q.limit)) && Number(q.limit) > 0
+      ? Math.min(Math.floor(Number(q.limit)), 100)
+      : 20;
     const qb = this.repo
       .createQueryBuilder('v')
       .leftJoinAndSelect('v.currency', 'currency');
@@ -144,7 +147,8 @@ export class VendorsService {
     const last = await this.repo
       .createQueryBuilder('v')
       .select('v.code', 'code')
-      .orderBy('v.created_at', 'DESC')
+      .setLock('pessimistic_write')
+      .orderBy('v.code', 'DESC')
       .limit(1)
       .getRawOne<{ code: string }>();
     const next = last?.code ? Number(last.code.replace(/\D/g, '')) + 1 : 1;
