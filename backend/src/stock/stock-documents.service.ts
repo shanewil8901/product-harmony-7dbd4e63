@@ -4,7 +4,13 @@ import { DataSource, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { Vendor } from '../vendors/vendor.entity';
-import { ALLOWED_FROM, DOC_TYPE_PREFIX, DOC_TYPE_TO_STATUS } from './lifecycle';
+import {
+  ALLOWED_FROM,
+  DOC_TYPE_PREFIX,
+  DOC_TYPE_TO_STATUS,
+  STAGES_REQUIRING_AMOUNT,
+  STAGE_REQUIRED_FIELDS,
+} from './lifecycle';
 import { StockHistoryService } from './stock-history.service';
 
 @Injectable()
