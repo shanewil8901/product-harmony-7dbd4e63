@@ -60,7 +60,7 @@ export class DashboardService {
     const [stocks, docs, history, products, vendors, users] = await Promise.all([
       this.stockRepo.find({
         where: { deleted_at: IsNull() },
-        relations: ['product', 'buying_currency_snapshot', 'qty_uom'],
+        relations: ['product', 'vendor', 'buying_currency_snapshot', 'qty_uom'],
       }),
       this.docRepo.find({ where: { deleted_at: IsNull() } }),
       this.historyRepo.find(),
@@ -186,7 +186,7 @@ export class DashboardService {
           product_code: s.product?.productCode ?? null,
           product_description: s.product?.description ?? null,
           batch_no: s.batch_no,
-          vendor_name: s.vendor_name,
+          vendor_name: s.vendor?.legal_name ?? null,
           qty: Number(s.qty),
           uom: s.qty_uom?.code ?? null,
           sold_at: sold.toISOString(),
@@ -265,7 +265,7 @@ export class DashboardService {
       }
     >();
     for (const s of stocks) {
-      const name = s.vendor_name ?? 'Unassigned';
+      const name = s.vendor?.legal_name ?? 'Unassigned';
       const e =
         vendorMap.get(name) ?? {
           vendor_id: s.vendor_id,
@@ -358,7 +358,7 @@ export class DashboardService {
         product_code: s.product?.productCode ?? null,
         product_description: s.product?.description ?? null,
         batch_no: s.batch_no,
-        vendor_name: s.vendor_name,
+        vendor_name: s.vendor?.legal_name ?? null,
         qty: Number(s.qty),
         uom: s.qty_uom?.code ?? null,
         expiry_date: s.expiry_date,

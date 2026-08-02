@@ -7,7 +7,6 @@ import { Stock } from './stock.entity';
 const TRACKED_FIELDS: (keyof Stock)[] = [
   'product_id',
   'vendor_id',
-  'vendor_name',
   'batch_no',
   'qty',
   'qty_uom_id',

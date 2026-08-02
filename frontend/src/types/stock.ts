@@ -95,7 +95,7 @@ export interface StockInput {
   qty_uom_id?: string;
   /** Required — only registered, active vendors are accepted by the API. */
   vendor_id: string;
-  vendor_name?: string;
+  /** Vendor name is resolved server-side from vendor_id — never sent by the client. */
   batch_no?: string;
   manufacture_date?: string;
   /** Required — enforced from the PO stage onwards. */

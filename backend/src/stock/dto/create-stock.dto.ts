@@ -32,13 +32,6 @@ export class CreateStockDto {
   @IsUUID(undefined, { message: 'Vendor is required — select a registered vendor' })
   vendor_id!: string;
 
-  /** Ignored if sent — always resolved from the vendor record on the server. */
-  @ApiPropertyOptional({ description: 'Resolved server-side from the vendor record' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  vendor_name?: string;
-
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

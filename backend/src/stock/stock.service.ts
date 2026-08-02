@@ -23,6 +23,7 @@ export class StockService {
 
   private readonly STOCK_RELATIONS = [
     'product',
+    'vendor',
     'qty_uom',
     'buying_currency_snapshot',
     'selling_currency_snapshot',
@@ -35,6 +36,8 @@ export class StockService {
     return {
       ...s,
       product_code: s.product?.productCode ?? null,
+      vendor_name: s.vendor?.legal_name ?? null,
+      vendor_code: s.vendor?.vendor_code ?? null,
       product_description: s.product?.description ?? null,
       qty_uom_code: s.qty_uom?.code ?? null,
       qty_uom_name: s.qty_uom?.name ?? null,
@@ -73,6 +76,7 @@ export class StockService {
     const qb = this.repo
       .createQueryBuilder('s')
       .leftJoinAndSelect('s.product', 'product')
+      .leftJoinAndSelect('s.vendor', 'vendor')
       .leftJoinAndSelect('s.qty_uom', 'qty_uom')
       .leftJoinAndSelect('s.buying_currency_snapshot', 'buying_currency_snapshot')
       .leftJoinAndSelect('s.selling_currency_snapshot', 'selling_currency_snapshot')
@@ -86,7 +90,8 @@ export class StockService {
         new Brackets((b) =>
           b
             .where('s.batch_no LIKE :term', { term })
-            .orWhere('s.vendor_name LIKE :term', { term })
+            .orWhere('vendor.legal_name LIKE :term', { term })
+            .orWhere('vendor.vendor_code LIKE :term', { term })
             .orWhere('s.notes LIKE :term', { term })
             // Autocomplete search also matches the joined product.
             .orWhere('product.productCode LIKE :term', { term })
@@ -146,7 +151,6 @@ export class StockService {
     const entity = this.repo.create({
       product_id: dto.product_id,
       vendor_id: vendor.id,
-      vendor_name: vendor.legal_name,
       batch_no: dto.batch_no ?? null,
       qty: dto.qty.toFixed(3),
       qty_uom_id: dto.qty_uom_id ?? product.base_uom_id,
@@ -172,7 +176,7 @@ export class StockService {
     const { document } = await this.documents.createForStock(
       saved.id,
       'inquiry',
-      { vendor: saved.vendor_name, requested_qty: saved.qty },
+      { vendor: vendor.legal_name, requested_qty: saved.qty },
       userEmail,
       { skipTransitionCheck: true },
     );
@@ -184,7 +188,8 @@ export class StockService {
     const s = await this.findOne(id);
     const before: Partial<Stock> = { ...s };
     // Status is document-driven — strip it if a client sends it anyway.
-    const { qty, ordered_at, vendor_id, vendor_name, ...rest } = dto;
+    const { qty, ordered_at, vendor_id, ...rest } = dto;
+    delete (rest as Record<string, unknown>).vendor_name;
     delete (rest as Record<string, unknown>).status;
     Object.assign(s, rest, { updated_by: userEmail });
 
@@ -192,7 +197,7 @@ export class StockService {
     if (vendor_id !== undefined) {
       const vendor = await this.requireVendor(vendor_id);
       s.vendor_id = vendor.id;
-      s.vendor_name = vendor.legal_name;
+      s.vendor = vendor;
     }
     this.assertDates(s.manufacture_date ?? null, s.expiry_date ?? null);
 

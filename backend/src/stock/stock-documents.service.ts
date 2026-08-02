@@ -4,6 +4,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { StockDocument, StockDocType } from './stock-document.entity';
 import { Stock } from './stock.entity';
 import { Vendor } from '../vendors/vendor.entity';
+import { Currency } from '../master-data/currency.entity';
 import {
   ALLOWED_FROM,
   DOC_TYPE_PREFIX,
@@ -49,6 +50,27 @@ export class StockDocumentsService {
   }
 
 
+  /**
+   * Documents store a currency master-data id; the API keeps exposing the
+   * human-readable ISO code so clients never deal with raw ids.
+   */
+  private toDto(doc: StockDocument) {
+    return {
+      ...doc,
+      currency_code: doc.currency?.code ?? null,
+      currency_symbol: doc.currency?.symbol ?? null,
+    };
+  }
+
+  /** Resolve an ISO code against the currency master data — unknown codes are rejected. */
+  private async resolveCurrency(code: string | undefined, mgr: EntityManager) {
+    if (!code) return null;
+    const currency = await mgr.findOne(Currency, { where: { code: code.toUpperCase() } });
+    if (!currency)
+      throw new BadRequestException(`Unknown currency "${code}" — pick a registered currency`);
+    return currency;
+  }
+
   async listForStock(stockId: string) {
     const docs = await this.repo.find({ where: { stock_id: stockId } });
     // Latest lifecycle stage first (cancellation/write-off, then payment_receipt → inquiry).
@@ -68,11 +90,12 @@ export class StockDocumentsService {
       write_off: 13,
       cancellation: 14,
     };
-    return docs.sort((a, b) => {
+    const sorted = docs.sort((a, b) => {
       const diff = (rank[b.doc_type] ?? 0) - (rank[a.doc_type] ?? 0);
       if (diff !== 0) return diff;
       return new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime();
     });
+    return sorted.map((d) => this.toDto(d));
   }
 
   async findOne(id: string) {
@@ -138,7 +161,7 @@ export class StockDocumentsService {
       ];
       if (REQUIRES_COMPLETE_DATA.includes(docType)) {
         const missing: string[] = [];
-        if (!stock.vendor_id || !stock.vendor_name) missing.push('vendor');
+        if (!stock.vendor_id) missing.push('vendor');
         else {
           const vendor = await mgr.findOne(Vendor, { where: { id: stock.vendor_id } });
           if (!vendor) missing.push('a registered vendor (current vendor is not in the system)');
@@ -223,6 +246,11 @@ export class StockDocumentsService {
       }
 
 
+      const currency =
+        opts.total_amount !== undefined
+          ? await this.resolveCurrency(opts.currency_code, mgr)
+          : null;
+
       const doc_number = await this.nextDocNumber(docType, mgr);
       const doc = mgr.create(StockDocument, {
         stock_id: stockId,
@@ -230,10 +258,11 @@ export class StockDocumentsService {
         doc_number,
         payload: payload ?? null,
         total_amount: opts.total_amount !== undefined ? opts.total_amount.toFixed(2) : null,
-        currency_code: opts.total_amount !== undefined ? (opts.currency_code ?? null) : null,
+        currency_id: currency?.id ?? null,
         generated_by: userEmail,
       });
       const saved = await mgr.save(doc);
+      saved.currency = currency;
 
 
       const statusFrom = stock.status;
@@ -250,14 +279,14 @@ export class StockDocumentsService {
           status_from: statusFrom,
           status_to: statusTo,
           total_amount: saved.total_amount,
-          currency_code: saved.currency_code,
+          currency_code: currency?.code ?? null,
         },
         userEmail,
         mgr,
       );
 
 
-      return { document: saved, stock };
+      return { document: this.toDto(saved) as unknown as StockDocument, stock };
     });
   }
 }

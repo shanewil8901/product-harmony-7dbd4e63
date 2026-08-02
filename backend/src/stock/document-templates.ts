@@ -23,6 +23,7 @@ type EnrichedStock = Stock & {
   product_code?: string | null;
   product_description?: string | null;
   qty_uom_code?: string | null;
+  vendor_name?: string | null;
   buying_currency_code?: string | null;
   buying_currency_symbol?: string | null;
   selling_currency_code?: string | null;
@@ -46,7 +47,7 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
   const title = DOC_TYPE_LABEL[doc.doc_type];
   const payload = doc.payload ?? {};
   const MONEY_KEYS = new Set(['amount', 'duty_amount', 'total_amount', 'unit_price']);
-  const docCurrency = doc.currency_code ?? null;
+  const docCurrency = doc.currency?.code ?? null;
   const payloadRows = Object.entries(payload)
     .map(([k, v]) => row(k.replace(/_/g, ' '), MONEY_KEYS.has(k) ? money(v, docCurrency) : v))
     .join('');
@@ -66,9 +67,7 @@ export function renderDocumentHtml(doc: StockDocument, stock: EnrichedStock): st
     stock.total_buying_value ??
     (Number(stock.qty) * Number(stock.buying_price_snapshot)).toFixed(2);
 
-  const vendorLabel = stock.vendor_name
-    ? stock.vendor_name
-    : (stock.vendor_id ?? '—');
+  const vendorLabel = stock.vendor_name ?? stock.vendor?.legal_name ?? '—';
 
   // Human-friendly stock reference: product code + batch (fallbacks preserved).
   const stockReference = stock.product_code
