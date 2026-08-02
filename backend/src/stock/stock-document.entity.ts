@@ -1,5 +1,7 @@
 import {
   Column,
+  JoinColumn,
+  ManyToOne,
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
@@ -7,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Currency } from '../master-data/currency.entity';
 
 export type StockDocType =
   | 'inquiry'
@@ -64,9 +67,13 @@ export class StockDocument {
   @Column({ name: 'total_amount', type: 'decimal', precision: 14, scale: 2, nullable: true })
   total_amount!: string | null;
 
-  /** ISO currency code for `total_amount` — mandatory whenever an amount is set. */
-  @Column({ name: 'currency_code', type: 'varchar', length: 8, nullable: true })
-  currency_code!: string | null;
+  /** Currency master-data id for `total_amount` — mandatory whenever an amount is set. */
+  @Column({ name: 'currency_id', type: 'varchar', length: 36, nullable: true })
+  currency_id!: string | null;
+
+  @ManyToOne(() => Currency, { nullable: true, eager: true })
+  @JoinColumn({ name: 'currency_id' })
+  currency?: Currency | null;
 
 
   @CreateDateColumn({ name: 'generated_at', type: 'datetime', precision: 6 })

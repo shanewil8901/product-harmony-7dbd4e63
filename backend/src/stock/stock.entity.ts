@@ -12,6 +12,7 @@ import {
 import { Product } from '../products/product.entity';
 import { Uom } from '../master-data/uom.entity';
 import { Currency } from '../master-data/currency.entity';
+import { Vendor } from '../vendors/vendor.entity';
 
 export type StockStatus =
   | 'inquiry_sent'
@@ -65,8 +66,9 @@ export class Stock {
   @Column({ name: 'vendor_id', type: 'varchar', length: 36, nullable: true })
   vendor_id!: string | null;
 
-  @Column({ name: 'vendor_name', type: 'varchar', length: 255, nullable: true })
-  vendor_name!: string | null;
+  @ManyToOne(() => Vendor, { nullable: true })
+  @JoinColumn({ name: 'vendor_id' })
+  vendor?: Vendor | null;
 
   @Column({ name: 'batch_no', type: 'varchar', length: 64, nullable: true })
   batch_no!: string | null;
