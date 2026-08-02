@@ -447,7 +447,6 @@ function StockModal({ products, onClose, onSubmit }: ModalProps) {
         qty: Number(qty),
         qty_uom_id: qtyUom || undefined,
         vendor_id: vendorId,
-        vendor_name: selectedVendor?.legal_name,
         batch_no: batchNo || undefined,
         manufacture_date: mfg || undefined,
         expiry_date: exp,
