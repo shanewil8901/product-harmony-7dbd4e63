@@ -10,6 +10,7 @@ import { StockModule } from './stock/stock.module';
 import { VendorsModule } from './vendors/vendors.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { HrModule } from './hr/hr.module';
 
 
 
@@ -39,6 +40,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     VendorsModule,
     CustomersModule,
     DashboardModule,
+    HrModule,
   ],
 })
 export class AppModule {}
