@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { employeesService } from '../services/hr.service';
 import { masterDataService } from '../services/masterData.service';
 import { usePermissions } from '../hooks/usePermissions';
@@ -65,7 +65,7 @@ function Field({
   required?: boolean;
   error?: string;
   help?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div>
