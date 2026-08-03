@@ -8,8 +8,12 @@ import { StockPage } from './pages/StockPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { VendorsPage } from './pages/VendorsPage';
 import { CustomersPage } from './pages/CustomersPage';
+import { EmployeesPage } from './pages/EmployeesPage';
+import { AttendancePage } from './pages/AttendancePage';
+import { PayrollPage } from './pages/PayrollPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRoute } from './components/RoleRoute';
+
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -35,6 +39,31 @@ export const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
+      {
+        path: 'employees',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <EmployeesPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'attendance',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <AttendancePage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'payroll',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <PayrollPage />
+          </RoleRoute>
+        ),
+      },
+
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
