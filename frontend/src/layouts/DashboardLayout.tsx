@@ -16,7 +16,15 @@ export function DashboardLayout() {
     { to: '/vendors', label: 'Vendors' },
     { to: '/customers', label: 'Customers' },
     { to: '/history', label: 'History' },
-    ...(canManageUsers ? [{ to: '/users', label: 'Users' }] : []),
+    ...(canManageUsers
+      ? [
+          { to: '/employees', label: 'Employees' },
+          { to: '/attendance', label: 'Attendance' },
+          { to: '/payroll', label: 'Payroll' },
+          { to: '/users', label: 'Users' },
+        ]
+      : []),
+
   ];
 
   const closeMobile = () => setMobileOpen(false);

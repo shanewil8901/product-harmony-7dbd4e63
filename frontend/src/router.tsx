@@ -39,6 +39,31 @@ export const router = createBrowserRouter([
           </RoleRoute>
         ),
       },
+      {
+        path: 'employees',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <EmployeesPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'attendance',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <AttendancePage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'payroll',
+        element: (
+          <RoleRoute allow={['admin', 'manager']}>
+            <PayrollPage />
+          </RoleRoute>
+        ),
+      },
+
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
