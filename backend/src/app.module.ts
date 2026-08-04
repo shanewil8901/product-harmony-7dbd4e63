@@ -21,13 +21,16 @@ import { HrModule } from './hr/hr.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'mysql',
-        host: config.get<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.get<string>('DB_USERNAME'),
+        host: config.get<string>('DB_HOST') ?? 'localhost',
+        port: Number(config.get<string>('DB_PORT') ?? 3306),
+        // Accept both naming styles so an existing .env keeps working.
+        username: config.get<string>('DB_USERNAME') ?? config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_DATABASE'),
+        database: config.get<string>('DB_DATABASE') ?? config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true, // dev only
+        // Schema auto-sync (dev). Set DB_SYNC=false to boot against legacy data
+        // without letting TypeORM alter the schema.
+        synchronize: (config.get<string>('DB_SYNC') ?? 'true') !== 'false',
         charset: 'utf8mb4',
       }),
     }),
