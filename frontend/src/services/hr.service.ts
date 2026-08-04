@@ -1,15 +1,18 @@
 import { api, getToken } from './api';
 import type {
+  AttendanceDayState,
   AttendanceRow,
   AttendanceSummary,
   CreateEmployeePayload,
   Employee,
+  EmployeeDirectoryEntry,
   EmployeeDocType,
   EmployeeDocument,
   GeneratePayslipPayload,
   PayrollSummaryRow,
   Payslip,
   PayslipStatus,
+  PunchPayload,
   UpdateEmployeePayload,
   UpsertAttendancePayload,
 } from '../types/hr';
@@ -94,5 +97,23 @@ export const payrollService = {
   },
   async remove(id: string) {
     await api.delete(`/payroll/payslips/${id}`);
+  },
+};
+
+/** Self-service check-in / check-out — available to every authenticated role. */
+export const selfAttendanceService = {
+  async directory() {
+    const { data } = await api.get<EmployeeDirectoryEntry[]>('/attendance/directory');
+    return data;
+  },
+  async dayState(employee_id: string, work_date: string) {
+    const { data } = await api.get<AttendanceDayState | null>('/attendance/day-state', {
+      params: { employee_id, work_date },
+    });
+    return data;
+  },
+  async punch(payload: PunchPayload) {
+    const { data } = await api.post<AttendanceDayState>('/attendance/punch', payload);
+    return data;
   },
 };

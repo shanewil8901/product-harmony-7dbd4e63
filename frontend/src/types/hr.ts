@@ -239,3 +239,31 @@ export interface GeneratePayslipPayload {
   other_deduction?: number;
   notes?: string;
 }
+
+/** Non-sensitive employee directory entry for the self check-in screen. */
+export interface EmployeeDirectoryEntry {
+  id: string;
+  employee_code: string;
+  full_name: string;
+  job_title: string;
+  department_name: string | null;
+  employment_status: EmploymentStatus;
+  join_date: string;
+}
+
+export interface AttendanceDayState {
+  id: string;
+  employee_id: string;
+  work_date: string;
+  status: AttendanceStatus;
+  check_in: string | null;
+  check_out: string | null;
+  worked_hours: string;
+}
+
+export interface PunchPayload {
+  employee_id: string;
+  kind: 'in' | 'out';
+  time: string;
+  work_date?: string;
+}

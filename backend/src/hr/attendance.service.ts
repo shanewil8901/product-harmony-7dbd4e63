@@ -4,6 +4,7 @@ import { Between, Repository } from 'typeorm';
 import { Attendance } from './attendance.entity';
 import { EmployeeProfile } from './employee-profile.entity';
 import { UpsertAttendanceDto } from './dto/upsert-attendance.dto';
+import { PunchAttendanceDto } from './dto/punch-attendance.dto';
 
 const NON_WORKING: string[] = ['absent', 'leave', 'sick_leave', 'holiday'];
 
@@ -101,6 +102,98 @@ export class AttendanceService {
 
     const saved = await this.repo.save(entity);
     return this.enrich(saved);
+  }
+
+  /**
+   * Non-sensitive employee directory used by the self-service check-in screen.
+   * Deliberately excludes salary, bank, Iqama, address and contact data.
+   */
+  async directory() {
+    const rows = await this.empRepo.find({
+      relations: { department: true },
+      order: { employee_code: 'ASC' },
+    });
+    return rows
+      .filter((e) => e.employment_status !== 'terminated')
+      .map((e) => ({
+        id: e.id,
+        employee_code: e.employee_code,
+        full_name: `${e.first_name} ${e.last_name}`.trim(),
+        job_title: e.job_title,
+        department_name: e.department?.name ?? null,
+        employment_status: e.employment_status,
+        join_date: e.join_date,
+      }));
+  }
+
+  /** Self-service check-in / check-out for a single employee-day. */
+  async punch(dto: PunchAttendanceDto, actor: string) {
+    const employee = await this.empRepo.findOne({ where: { id: dto.employee_id } });
+    if (!employee) throw new BadRequestException('Unknown employee — pick one from the list');
+    if (employee.employment_status === 'terminated')
+      throw new BadRequestException('Cannot record attendance for a terminated employee');
+
+    const workDate = (dto.work_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+    if (new Date(workDate) > new Date(new Date().toISOString().slice(0, 10)))
+      throw new BadRequestException('Attendance cannot be recorded for a future date');
+    if (new Date(workDate) < new Date(employee.join_date))
+      throw new BadRequestException('Attendance date is before the employee joined');
+
+    const existing = await this.repo.findOne({
+      where: { employee_id: dto.employee_id, work_date: workDate },
+    });
+    const entity =
+      existing ??
+      this.repo.create({
+        employee_id: dto.employee_id,
+        work_date: workDate,
+        status: 'present',
+        created_by: actor,
+      });
+
+    if (dto.kind === 'in') {
+      entity.status = NON_WORKING.includes(entity.status) ? 'present' : entity.status;
+      entity.check_in = dto.time;
+      if (entity.check_out && this.hoursBetween(dto.time, entity.check_out) <= 0)
+        throw new BadRequestException('Check-in must be earlier than the recorded check-out');
+    } else {
+      if (!entity.check_in)
+        throw new BadRequestException('Check in first before recording a check-out');
+      if (this.hoursBetween(entity.check_in, dto.time) <= 0)
+        throw new BadRequestException('Check-out must be later than the check-in time');
+      entity.check_out = dto.time;
+    }
+
+    entity.worked_hours = this.hoursBetween(entity.check_in, entity.check_out).toFixed(2);
+    entity.updated_by = actor;
+
+    const saved = await this.repo.save(entity);
+    return {
+      id: saved.id,
+      employee_id: saved.employee_id,
+      work_date: saved.work_date,
+      status: saved.status,
+      check_in: saved.check_in,
+      check_out: saved.check_out,
+      worked_hours: saved.worked_hours,
+    };
+  }
+
+  /** Today's (or a given day's) punch state for one employee — no sensitive data. */
+  async dayState(employeeId: string, workDate: string) {
+    const row = await this.repo.findOne({
+      where: { employee_id: employeeId, work_date: workDate.slice(0, 10) },
+    });
+    if (!row) return null;
+    return {
+      id: row.id,
+      employee_id: row.employee_id,
+      work_date: row.work_date,
+      status: row.status,
+      check_in: row.check_in,
+      check_out: row.check_out,
+      worked_hours: row.worked_hours,
+    };
   }
 
   async remove(id: string) {
