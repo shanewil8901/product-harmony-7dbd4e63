@@ -37,7 +37,7 @@ export class StockService {
       ...s,
       product_code: s.product?.productCode ?? null,
       vendor_name: s.vendor?.legal_name ?? null,
-      vendor_code: s.vendor?.vendor_code ?? null,
+      vendor_code: s.vendor?.code ?? null,
       product_description: s.product?.description ?? null,
       qty_uom_code: s.qty_uom?.code ?? null,
       qty_uom_name: s.qty_uom?.name ?? null,
