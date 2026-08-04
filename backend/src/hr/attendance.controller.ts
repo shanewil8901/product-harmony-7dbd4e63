@@ -30,6 +30,30 @@ interface AuthedRequest {
 export class AttendanceController {
   constructor(private readonly service: AttendanceService) {}
 
+  /** Non-sensitive employee list for the self check-in screen (all roles). */
+  @Get('directory')
+  @Roles('admin', 'manager', 'warehouse', 'sales', 'employee')
+  directory() {
+    return this.service.directory();
+  }
+
+  /** Punch state for one employee/day — used to prefill the self screen. */
+  @Get('day-state')
+  @Roles('admin', 'manager', 'warehouse', 'sales', 'employee')
+  dayState(@Query('employee_id') employeeId: string, @Query('work_date') workDate?: string) {
+    return this.service.dayState(
+      employeeId,
+      workDate ?? new Date().toISOString().slice(0, 10),
+    );
+  }
+
+  /** Self-service check-in / check-out (all roles). */
+  @Post('punch')
+  @Roles('admin', 'manager', 'warehouse', 'sales', 'employee')
+  punch(@Body() dto: PunchAttendanceDto, @Req() req: AuthedRequest) {
+    return this.service.punch(dto, req.user.email);
+  }
+
   @Get()
   list(
     @Query('employee_id') employeeId?: string,
@@ -38,6 +62,7 @@ export class AttendanceController {
   ) {
     return this.service.list({ employee_id: employeeId, from, to });
   }
+
 
   @Post()
   upsert(@Body() dto: UpsertAttendanceDto, @Req() req: AuthedRequest) {
