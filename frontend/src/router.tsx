@@ -10,6 +10,7 @@ import { VendorsPage } from './pages/VendorsPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { EmployeesPage } from './pages/EmployeesPage';
 import { AttendancePage } from './pages/AttendancePage';
+import { SelfAttendancePage } from './pages/SelfAttendancePage';
 import { PayrollPage } from './pages/PayrollPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRoute } from './components/RoleRoute';
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       { path: 'vendors', element: <VendorsPage /> },
       { path: 'customers', element: <CustomersPage /> },
       { path: 'history', element: <HistoryPage /> },
+      { path: 'my-attendance', element: <SelfAttendancePage /> },
       {
         path: 'users',
         element: (
