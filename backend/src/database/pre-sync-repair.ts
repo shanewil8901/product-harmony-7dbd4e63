@@ -67,17 +67,28 @@ async function tableExists(conn: mysql.Connection, db: string, table: string) {
   return rows.length > 0;
 }
 
-async function columnExists(conn: mysql.Connection, db: string, table: string, column: string) {
+/** Returns 'YES' / 'NO' / null when the column does not exist. */
+async function columnNullable(
+  conn: mysql.Connection,
+  db: string,
+  table: string,
+  column: string,
+): Promise<boolean | null> {
   const [rows] = await conn.query<mysql.RowDataPacket[]>(
-    'SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ? LIMIT 1',
+    'SELECT IS_NULLABLE FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ? LIMIT 1',
     [db, table, column],
   );
-  return rows.length > 0;
+  if (!rows.length) return null;
+  return String(rows[0]['IS_NULLABLE']).toUpperCase() === 'YES';
 }
 
 /**
  * Clears dangling foreign-key values so `synchronize` can create the constraints
  * against legacy data. Safe to run on every boot — it is a no-op once clean.
+ *
+ * Nullable columns get their orphan value set to NULL (row is kept).
+ * NOT NULL columns cannot be repaired automatically — the orphan rows are
+ * reported so they can be corrected manually instead of being destroyed.
  */
 export async function repairOrphanForeignKeys(log: (m: string) => void = console.log) {
   const database = process.env.DB_DATABASE ?? process.env.DB_NAME;
@@ -94,29 +105,50 @@ export async function repairOrphanForeignKeys(log: (m: string) => void = console
 
   try {
     let repaired = 0;
+    let blocking = 0;
     for (const ref of FK_REFS) {
       const refColumn = ref.refColumn ?? 'id';
       if (!(await tableExists(conn, database, ref.table))) continue;
       if (!(await tableExists(conn, database, ref.refTable))) continue;
-      if (!(await columnExists(conn, database, ref.table, ref.column))) continue;
+      const nullable = await columnNullable(conn, database, ref.table, ref.column);
+      if (nullable === null) continue;
 
       // Empty strings are legacy placeholders and can never match a uuid PK.
-      const [res] = await conn.execute<mysql.ResultSetHeader>(
-        `UPDATE \`${ref.table}\` c
-            LEFT JOIN \`${ref.refTable}\` p ON p.\`${refColumn}\` = c.\`${ref.column}\`
-            SET c.\`${ref.column}\` = NULL
-          WHERE c.\`${ref.column}\` IS NOT NULL
-            AND (c.\`${ref.column}\` = '' OR p.\`${refColumn}\` IS NULL)`,
-      );
-      if (res.affectedRows > 0) {
-        repaired += res.affectedRows;
-        log(
-          `[db-repair] ${ref.table}.${ref.column}: cleared ${res.affectedRows} orphan reference(s) to ${ref.refTable}`,
+      const orphanWhere = `c.\`${ref.column}\` IS NOT NULL AND (c.\`${ref.column}\` = '' OR p.\`${refColumn}\` IS NULL)`;
+
+      if (nullable) {
+        const [res] = await conn.execute<mysql.ResultSetHeader>(
+          `UPDATE \`${ref.table}\` c
+              LEFT JOIN \`${ref.refTable}\` p ON p.\`${refColumn}\` = c.\`${ref.column}\`
+              SET c.\`${ref.column}\` = NULL
+            WHERE ${orphanWhere}`,
         );
+        if (res.affectedRows > 0) {
+          repaired += res.affectedRows;
+          log(
+            `[db-repair] ${ref.table}.${ref.column}: cleared ${res.affectedRows} orphan reference(s) to ${ref.refTable}`,
+          );
+        }
+      } else {
+        const [rows] = await conn.query<mysql.RowDataPacket[]>(
+          `SELECT COUNT(*) AS n
+             FROM \`${ref.table}\` c
+             LEFT JOIN \`${ref.refTable}\` p ON p.\`${refColumn}\` = c.\`${ref.column}\`
+            WHERE ${orphanWhere}`,
+        );
+        const n = Number(rows[0]?.['n'] ?? 0);
+        if (n > 0) {
+          blocking += n;
+          log(
+            `[db-repair] WARNING ${ref.table}.${ref.column} has ${n} row(s) pointing at a missing ${ref.refTable} row, ` +
+              `and the column is NOT NULL so it cannot be auto-fixed. Point those rows at a valid ${ref.refTable} record.`,
+          );
+        }
       }
     }
-    if (repaired === 0) log('[db-repair] no orphan foreign keys found');
+    if (repaired === 0 && blocking === 0) log('[db-repair] no orphan foreign keys found');
   } finally {
     await conn.end();
   }
 }
+
