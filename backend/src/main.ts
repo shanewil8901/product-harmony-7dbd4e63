@@ -5,8 +5,19 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { repairOrphanForeignKeys } from './database/pre-sync-repair';
 
 async function bootstrap() {
+  // Legacy rows may still point at deleted/free-text vendors, currencies, etc.
+  // Clear those dangling pointers before TypeORM tries to add the constraints,
+  // otherwise startup fails with "a foreign key constraint fails".
+  try {
+    await repairOrphanForeignKeys();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[db-repair] skipped:', (err as Error).message);
+  }
+
   const app = await NestFactory.create(AppModule, { cors: true });
 
   app.setGlobalPrefix('api/v1');
