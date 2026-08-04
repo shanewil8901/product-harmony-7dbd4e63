@@ -17,6 +17,8 @@ import { Roles } from '../auth/roles.decorator';
 import type { RoleCode } from '../master-data/role.entity';
 import { AttendanceService } from './attendance.service';
 import { UpsertAttendanceDto } from './dto/upsert-attendance.dto';
+import { PunchAttendanceDto } from './dto/punch-attendance.dto';
+
 
 interface AuthedRequest {
   user: { id: string; email: string; name: string; role: RoleCode | null };
