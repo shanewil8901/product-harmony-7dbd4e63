@@ -1,5 +1,10 @@
 import type { Role, RoleCode } from './product';
 
+/** HR (employees, attendance, payroll) is always denominated in Saudi Riyal. */
+export const HR_CURRENCY = { code: 'SAR', name: 'Saudi Riyal', symbol: 'SR' } as const;
+
+
+
 export const EMPLOYMENT_STATUSES = [
   'active',
   'probation',
