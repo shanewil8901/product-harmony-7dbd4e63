@@ -1,20 +1,13 @@
 import { api } from './api';
-import type { RoleCode, UserRow } from '../types/product';
+import type { UserRow } from '../types/product';
 
-export interface CreateUserPayload {
-  email: string;
-  name: string;
-  password: string;
-  role: RoleCode;
-}
-
+/**
+ * Login accounts are read-only here — they are created together with the HR
+ * profile from the Employees screen so the two can never diverge.
+ */
 export const usersService = {
   async list() {
     const { data } = await api.get<UserRow[]>('/users');
-    return data;
-  },
-  async create(payload: CreateUserPayload) {
-    const { data } = await api.post<UserRow>('/users', payload);
     return data;
   },
 };
