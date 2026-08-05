@@ -106,7 +106,62 @@ export function EmployeesPage() {
   const [docType, setDocType] = useState<EmployeeDocType>('iqama');
   const [uploading, setUploading] = useState(false);
 
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ taken: boolean; message: string } | null>(null);
+
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  /**
+   * Debounced, read-only lookup of the typed email. Nothing is written — it only
+   * warns the user before they submit so no existing account is ever touched.
+   */
+  useEffect(() => {
+    if (editing || !modalOpen) {
+      setEmailNotice(null);
+      return;
+    }
+    const email = form.email.trim();
+    if (!email || !EMAIL_RE.test(email)) {
+      setEmailNotice(null);
+      return;
+    }
+    let cancelled = false;
+    setEmailChecking(true);
+    const t = window.setTimeout(() => {
+      void employeesService
+        .checkEmail(email)
+        .then((res) => {
+          if (cancelled) return;
+          if (!res.exists) {
+            setEmailNotice({ taken: false, message: 'This email is available.' });
+          } else if (res.has_employee_profile) {
+            setEmailNotice({
+              taken: true,
+              message: `This email already exists in the user system and is linked to employee ${res.employee_code}. Use a different email.`,
+            });
+          } else {
+            setEmailNotice({
+              taken: true,
+              message:
+                'This email already exists in the user system as a login account. Use a different email — existing accounts are never overwritten.',
+            });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setEmailNotice(null);
+        })
+        .finally(() => {
+          if (!cancelled) setEmailChecking(false);
+        });
+    }, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      window.clearTimeout(t);
+      setEmailChecking(false);
+    };
+  }, [form.email, editing, modalOpen]);
+
 
   const load = async () => {
     setLoading(true);
