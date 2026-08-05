@@ -144,7 +144,7 @@ export class EmployeesService {
     const role = await this.roleRepo.findOne({ where: { code: dto.role } });
     if (!role) throw new BadRequestException('Unknown role — pick one from the list');
     const department = await this.requireDepartment(dto.department_id);
-    const currency = await this.requireCurrency(dto.salary_currency_id);
+    const currency = await this.payrollCurrency();
 
     return this.dataSource.transaction(async (mgr) => {
       const user = await mgr.save(
