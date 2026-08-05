@@ -7,6 +7,8 @@ import { EMAIL_RE, HELP, KSA } from '../lib/validators';
 import type { ApiError } from '../services/api';
 import type { Currency, Department, Role, RoleCode } from '../types/product';
 import {
+  HR_CURRENCY,
+
   CONTRACT_TYPES,
   CONTRACT_TYPE_LABEL,
   EMPLOYEE_DOC_LABEL,
