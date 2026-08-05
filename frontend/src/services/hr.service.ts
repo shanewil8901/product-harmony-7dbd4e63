@@ -3,11 +3,15 @@ import type {
   AttendanceDayState,
   AttendanceRow,
   AttendanceSummary,
+  BulkPayslipPayload,
+  BulkPayslipResult,
   CreateEmployeePayload,
+  EmailCheckResult,
   Employee,
   EmployeeDirectoryEntry,
   EmployeeDocType,
   EmployeeDocument,
+  EmployeeSelfOverview,
   GeneratePayslipPayload,
   PayrollSummaryRow,
   Payslip,
@@ -26,6 +30,17 @@ export const employeesService = {
     const { data } = await api.get<Employee>(`/employees/${id}`);
     return data;
   },
+  /** Read-only check: does a login account already exist for this email? */
+  async checkEmail(email: string) {
+    const { data } = await api.get<EmailCheckResult>('/employees/email-check', {
+      params: { email },
+    });
+    return data;
+  },
+  async myOverview() {
+    const { data } = await api.get<EmployeeSelfOverview>('/employees/me/overview');
+    return data;
+  },
   async create(payload: CreateEmployeePayload) {
     const { data } = await api.post<Employee>('/employees', payload);
     return data;
@@ -34,6 +49,7 @@ export const employeesService = {
     const { data } = await api.patch<Employee>(`/employees/${id}`, payload);
     return data;
   },
+
   async documents(id: string) {
     const { data } = await api.get<EmployeeDocument[]>(`/employees/${id}/documents`);
     return data;
@@ -91,6 +107,11 @@ export const payrollService = {
     const { data } = await api.post<Payslip>('/payroll/payslips', payload);
     return data;
   },
+  async generateBulk(payload: BulkPayslipPayload) {
+    const { data } = await api.post<BulkPayslipResult>('/payroll/payslips/bulk', payload);
+    return data;
+  },
+
   async setStatus(id: string, status: PayslipStatus) {
     const { data } = await api.patch<Payslip>(`/payroll/payslips/${id}/status`, { status });
     return data;

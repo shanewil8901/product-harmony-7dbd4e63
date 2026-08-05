@@ -56,10 +56,24 @@ export class EmployeesController {
     return this.service.list({ search, status });
   }
 
+  /** Read-only check used by the employee form — never mutates anything. */
+  @Get('email-check')
+  emailCheck(@Query('email') email: string) {
+    return this.service.checkEmail(email);
+  }
+
+  /** Signed-in user's own HR dashboard (all roles). */
+  @Get('me/overview')
+  @Roles('admin', 'manager', 'warehouse', 'sales', 'employee')
+  myOverview(@Req() req: AuthedRequest) {
+    return this.service.selfOverview(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.service.findOne(id);
   }
+
 
   @Post()
   create(@Body() dto: CreateEmployeeDto, @Req() req: AuthedRequest) {

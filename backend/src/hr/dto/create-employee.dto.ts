@@ -169,9 +169,14 @@ export class CreateEmployeeDto {
   @Min(0)
   other_allowance?: number;
 
-  @ApiProperty({ description: 'Currency master-data id for the salary' })
+  @ApiPropertyOptional({
+    description: 'Ignored — HR salaries are always recorded in SAR',
+    deprecated: true,
+  })
+  @IsOptional()
   @IsUUID(undefined, { message: 'Select a salary currency' })
-  salary_currency_id!: string;
+  salary_currency_id?: string;
+
 
   @ApiPropertyOptional()
   @IsOptional()

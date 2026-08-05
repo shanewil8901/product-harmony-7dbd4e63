@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Payslip, PayslipStatus } from './payslip.entity';
 import { EmployeeProfile } from './employee-profile.entity';
 import { AttendanceService } from './attendance.service';
-import { GeneratePayslipDto } from './dto/payslip.dto';
+import { BulkGeneratePayslipDto, GeneratePayslipDto } from './dto/payslip.dto';
 
 @Injectable()
 export class PayrollService {
@@ -13,6 +13,7 @@ export class PayrollService {
     @InjectRepository(EmployeeProfile) private readonly empRepo: Repository<EmployeeProfile>,
     private readonly attendance: AttendanceService,
   ) {}
+
 
   private enrich(p: Payslip) {
     return {
@@ -140,6 +141,63 @@ export class PayrollService {
     );
     return this.findOne(saved.id);
   }
+
+  /**
+   * Bulk run for every non-terminated employee holding the selected role.
+   * Employees with an existing payslip for the period are skipped, so no
+   * previously generated payroll data is ever rewritten.
+   */
+  async generateBulk(dto: BulkGeneratePayslipDto, actor: string) {
+    const qb = this.empRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.user', 'user')
+      .leftJoinAndSelect('user.role', 'role')
+      .where('role.code = :code', { code: dto.role })
+      .andWhere('e.employment_status != :terminated', { terminated: 'terminated' })
+      .orderBy('e.employee_code', 'ASC');
+    if (dto.department_id) qb.andWhere('e.department_id = :dep', { dep: dto.department_id });
+
+    const employees = await qb.getMany();
+    if (employees.length === 0)
+      throw new BadRequestException('No active employees found for that role');
+
+    const created: { employee_code: string; employee_name: string; net_pay: string }[] = [];
+    const skipped: { employee_code: string; employee_name: string; reason: string }[] = [];
+
+    for (const e of employees) {
+      const name = `${e.first_name} ${e.last_name}`.trim();
+      try {
+        const slip = await this.generate(
+          {
+            employee_id: e.id,
+            period: dto.period,
+            overtime_rate: dto.overtime_rate,
+            bonus: dto.bonus,
+            gosi_deduction: dto.gosi_deduction,
+            other_deduction: dto.other_deduction,
+            notes: dto.notes,
+          },
+          actor,
+        );
+        created.push({ employee_code: e.employee_code, employee_name: name, net_pay: slip.net_pay });
+      } catch (err) {
+        skipped.push({
+          employee_code: e.employee_code,
+          employee_name: name,
+          reason: err instanceof Error ? err.message : 'Could not generate payslip',
+        });
+      }
+    }
+
+    return {
+      period: dto.period,
+      role: dto.role,
+      considered: employees.length,
+      created,
+      skipped,
+    };
+  }
+
 
   /** draft → approved → paid, with cancellation allowed before payment. */
   async setStatus(id: string, status: PayslipStatus, actor: string) {

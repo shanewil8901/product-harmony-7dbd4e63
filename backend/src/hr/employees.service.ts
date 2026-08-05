@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Between, DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { EmployeeProfile } from './employee-profile.entity';
 import { EmployeeDocument, EmployeeDocType } from './employee-document.entity';
+import { Attendance } from './attendance.entity';
+import { Payslip } from './payslip.entity';
 import { User } from '../users/user.entity';
 import { Role } from '../master-data/role.entity';
 import { Department } from '../master-data/department.entity';
@@ -16,17 +18,23 @@ import { Currency } from '../master-data/currency.entity';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
+/** HR always pays in Saudi Riyal — the currency is fixed, never user-selectable. */
+export const HR_CURRENCY_CODE = 'SAR';
+
 @Injectable()
 export class EmployeesService {
   constructor(
     @InjectRepository(EmployeeProfile) private readonly repo: Repository<EmployeeProfile>,
     @InjectRepository(EmployeeDocument) private readonly docRepo: Repository<EmployeeDocument>,
+    @InjectRepository(Attendance) private readonly attRepo: Repository<Attendance>,
+    @InjectRepository(Payslip) private readonly payslipRepo: Repository<Payslip>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Role) private readonly roleRepo: Repository<Role>,
     @InjectRepository(Department) private readonly deptRepo: Repository<Department>,
     @InjectRepository(Currency) private readonly currencyRepo: Repository<Currency>,
     private readonly dataSource: DataSource,
   ) {}
+
 
   /** Flatten master-data relations so the API never leaks bare ids. */
   private enrich(e: EmployeeProfile) {
@@ -57,12 +65,34 @@ export class EmployeesService {
     return dep;
   }
 
-  private async requireCurrency(id: string | undefined | null) {
-    if (!id) throw new BadRequestException('Salary currency is required');
-    const cur = await this.currencyRepo.findOne({ where: { id } });
-    if (!cur) throw new BadRequestException('Unknown currency — pick one from the list');
-    return cur;
+  /**
+   * HR salaries are always in SAR. Any currency sent by a client is ignored so
+   * existing rows can never be switched to another currency by mistake.
+   */
+  private async payrollCurrency() {
+    const existing = await this.currencyRepo.findOne({ where: { code: HR_CURRENCY_CODE } });
+    if (existing) return existing;
+    // Additive only — never touches existing master data.
+    return this.currencyRepo.save(
+      this.currencyRepo.create({ code: HR_CURRENCY_CODE, name: 'Saudi Riyal', symbol: 'SR' }),
+    );
   }
+
+  /** Non-destructive lookup used by the employee form before submitting. */
+  async checkEmail(email: string) {
+    const value = (email ?? '').trim().toLowerCase();
+    if (!value) throw new BadRequestException('Enter an email address to check');
+    const user = await this.userRepo.findOne({ where: { email: value } });
+    if (!user) return { email: value, exists: false, has_employee_profile: false };
+    const profile = await this.repo.findOne({ where: { user_id: user.id } });
+    return {
+      email: value,
+      exists: true,
+      has_employee_profile: !!profile,
+      employee_code: profile?.employee_code ?? null,
+    };
+  }
+
 
   private async nextEmployeeCode() {
     const last = await this.repo
@@ -114,7 +144,7 @@ export class EmployeesService {
     const role = await this.roleRepo.findOne({ where: { code: dto.role } });
     if (!role) throw new BadRequestException('Unknown role — pick one from the list');
     const department = await this.requireDepartment(dto.department_id);
-    const currency = await this.requireCurrency(dto.salary_currency_id);
+    const currency = await this.payrollCurrency();
 
     return this.dataSource.transaction(async (mgr) => {
       const user = await mgr.save(
@@ -173,10 +203,12 @@ export class EmployeesService {
       if (dup) throw new ConflictException('That Iqama / National ID is already registered');
     }
     if (dto.department_id !== undefined) await this.requireDepartment(dto.department_id);
-    if (dto.salary_currency_id !== undefined) await this.requireCurrency(dto.salary_currency_id);
 
-    const { password, role, ...rest } = dto;
+    const { password, role, salary_currency_id: _ignoredCurrency, ...rest } = dto;
     Object.assign(profile, rest, { updated_by: actor });
+    // Salary currency is fixed to SAR for every HR record.
+    profile.salary_currency_id = (await this.payrollCurrency()).id;
+
     if (dto.basic_salary !== undefined) profile.basic_salary = dto.basic_salary.toFixed(2);
     if (dto.housing_allowance !== undefined)
       profile.housing_allowance = dto.housing_allowance.toFixed(2);
@@ -238,4 +270,150 @@ export class EmployeesService {
     await this.docRepo.remove(doc);
     return { id: docId, deleted: true };
   }
+
+  /**
+   * Self-service profile dashboard: general data, payroll history, attendance
+   * stats and document list for the signed-in user. Read-only.
+   */
+  async selfOverview(userId: string) {
+    const profile = await this.repo.findOne({
+      where: { user_id: userId },
+      relations: ['user', 'user.role', 'department', 'salary_currency'],
+    });
+    if (!profile)
+      throw new NotFoundException(
+        'No employee profile is linked to your account — ask HR to create one.',
+      );
+
+    const NON_WORKING = ['absent', 'leave', 'sick_leave', 'holiday'];
+    const today = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const monthStart = iso(new Date(today.getFullYear(), today.getMonth(), 1));
+    const yearStart = iso(new Date(today.getFullYear(), 0, 1));
+
+    const [monthRows, yearRows, payslips, documents] = await Promise.all([
+      this.attRepo.find({
+        where: { employee_id: profile.id, work_date: Between(monthStart, iso(today)) },
+        order: { work_date: 'DESC' },
+      }),
+      this.attRepo.find({
+        where: { employee_id: profile.id, work_date: Between(yearStart, iso(today)) },
+      }),
+      this.payslipRepo.find({
+        where: { employee_id: profile.id },
+        order: { period: 'DESC' },
+        take: 12,
+      }),
+      this.docRepo.find({ where: { employee_id: profile.id }, order: { uploaded_at: 'DESC' } }),
+    ]);
+
+    const summarise = (rows: typeof monthRows) => ({
+      records: rows.length,
+      present_days: rows.filter((r) => !NON_WORKING.includes(r.status)).length,
+      absent_days: rows.filter((r) => r.status === 'absent').length,
+      leave_days: rows.filter((r) => r.status === 'leave' || r.status === 'sick_leave').length,
+      late_days: rows.filter((r) => r.status === 'late').length,
+      total_hours: rows.reduce((s, r) => s + Number(r.worked_hours), 0).toFixed(2),
+      total_overtime: rows.reduce((s, r) => s + Number(r.overtime_hours), 0).toFixed(2),
+    });
+
+    // Six-month attendance trend for the profile chart.
+    const trend: { period: string; present_days: number; absent_days: number; hours: string }[] = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const rows = yearRows.filter((r) => String(r.work_date).slice(0, 7) === key);
+      trend.push({
+        period: key,
+        present_days: rows.filter((r) => !NON_WORKING.includes(r.status)).length,
+        absent_days: rows.filter((r) => r.status === 'absent').length,
+        hours: rows.reduce((s, r) => s + Number(r.worked_hours), 0).toFixed(2),
+      });
+    }
+
+    const paid = payslips.filter((p) => p.status === 'paid');
+    const ytdNet = paid
+      .filter((p) => p.period.startsWith(String(today.getFullYear())))
+      .reduce((s, p) => s + Number(p.net_pay), 0);
+
+    const days = (from: string | null) =>
+      from ? Math.round((new Date(from).getTime() - today.getTime()) / 86_400_000) : null;
+
+    const employee = this.enrich(profile);
+    return {
+      employee: {
+        id: employee.id,
+        employee_code: employee.employee_code,
+        full_name: employee.full_name,
+        email: employee.email,
+        role: employee.role,
+        job_title: employee.job_title,
+        department_name: employee.department_name,
+        join_date: employee.join_date,
+        contract_type: employee.contract_type,
+        employment_status: employee.employment_status,
+        mobile: employee.mobile,
+        nationality: employee.nationality,
+        iqama_number: employee.iqama_number,
+        iqama_expiry: employee.iqama_expiry,
+        iqama_days_left: days(employee.iqama_expiry as string | null),
+        address_line1: employee.address_line1,
+        address_city: employee.address_city,
+        emergency_contact_name: employee.emergency_contact_name,
+        emergency_contact_phone: employee.emergency_contact_phone,
+        bank_name: employee.bank_name,
+        iban: employee.iban,
+        basic_salary: employee.basic_salary,
+        housing_allowance: employee.housing_allowance,
+        transport_allowance: employee.transport_allowance,
+        other_allowance: employee.other_allowance,
+        gross_salary: employee.gross_salary,
+        salary_currency_code: employee.salary_currency_code ?? HR_CURRENCY_CODE,
+        tenure_months: Math.max(
+          0,
+          Math.round(
+            (today.getTime() - new Date(employee.join_date).getTime()) / (30.44 * 86_400_000),
+          ),
+        ),
+      },
+      attendance: {
+        this_month: summarise(monthRows),
+        year_to_date: summarise(yearRows),
+        recent: monthRows.slice(0, 10).map((r) => ({
+          id: r.id,
+          work_date: r.work_date,
+          status: r.status,
+          check_in: r.check_in,
+          check_out: r.check_out,
+          worked_hours: r.worked_hours,
+          overtime_hours: r.overtime_hours,
+        })),
+        trend,
+      },
+      payroll: {
+        currency_code: employee.salary_currency_code ?? HR_CURRENCY_CODE,
+        ytd_net_paid: ytdNet.toFixed(2),
+        last_paid_period: paid[0]?.period ?? null,
+        payslips: payslips.map((p) => ({
+          id: p.id,
+          period: p.period,
+          status: p.status,
+          net_pay: p.net_pay,
+          bonus: p.bonus,
+          overtime_amount: p.overtime_amount,
+          gosi_deduction: p.gosi_deduction,
+          unpaid_leave_deduction: p.unpaid_leave_deduction,
+          other_deduction: p.other_deduction,
+          paid_at: p.paid_at,
+        })),
+      },
+      documents: documents.map((d) => ({
+        id: d.id,
+        doc_type: d.doc_type,
+        file_name: d.file_name,
+        uploaded_at: d.uploaded_at,
+      })),
+    };
+  }
 }
+

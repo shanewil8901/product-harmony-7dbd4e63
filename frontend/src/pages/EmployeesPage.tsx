@@ -7,6 +7,8 @@ import { EMAIL_RE, HELP, KSA } from '../lib/validators';
 import type { ApiError } from '../services/api';
 import type { Currency, Department, Role, RoleCode } from '../types/product';
 import {
+  HR_CURRENCY,
+
   CONTRACT_TYPES,
   CONTRACT_TYPE_LABEL,
   EMPLOYEE_DOC_LABEL,
@@ -106,7 +108,61 @@ export function EmployeesPage() {
   const [docType, setDocType] = useState<EmployeeDocType>('iqama');
   const [uploading, setUploading] = useState(false);
 
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ taken: boolean; message: string } | null>(null);
+
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  /**
+   * Debounced, read-only lookup of the typed email. Nothing is written — it only
+   * warns the user before they submit so no existing account is ever touched.
+   */
+  useEffect(() => {
+    if (editing || !modalOpen) {
+      setEmailNotice(null);
+      return;
+    }
+    const email = form.email.trim();
+    if (!email || !EMAIL_RE.test(email)) {
+      setEmailNotice(null);
+      return;
+    }
+    let cancelled = false;
+    setEmailChecking(true);
+    const t = window.setTimeout(() => {
+      void employeesService
+        .checkEmail(email)
+        .then((res) => {
+          if (cancelled) return;
+          if (!res.exists) {
+            setEmailNotice({ taken: false, message: 'This email is available.' });
+          } else if (res.has_employee_profile) {
+            setEmailNotice({
+              taken: true,
+              message: `This email already exists in the user system and is linked to employee ${res.employee_code}. Use a different email.`,
+            });
+          } else {
+            setEmailNotice({
+              taken: true,
+              message:
+                'This email already exists in the user system as a login account. Use a different email — existing accounts are never overwritten.',
+            });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setEmailNotice(null);
+        })
+        .finally(() => {
+          if (!cancelled) setEmailChecking(false);
+        });
+    }, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      setEmailChecking(false);
+    };
+  }, [form.email, editing, modalOpen]);
+
 
   const load = async () => {
     setLoading(true);
@@ -219,6 +275,7 @@ export function EmployeesPage() {
     if (!editing) {
       if (!form.email.trim()) e.email = 'Required';
       else if (!EMAIL_RE.test(form.email)) e.email = 'Enter a valid email address';
+      else if (emailNotice?.taken) e.email = emailNotice.message;
       if (!form.password) e.password = 'Required';
       else if (form.password.length < 6) e.password = HELP.PASSWORD;
     } else if (form.password && form.password.length < 6) {
@@ -241,7 +298,6 @@ export function EmployeesPage() {
     if (form.basic_salary === '' || Number.isNaN(Number(form.basic_salary)))
       e.basic_salary = 'Enter a valid amount';
     else if (Number(form.basic_salary) < 0) e.basic_salary = 'Cannot be negative';
-    if (!form.salary_currency_id) e.salary_currency_id = 'Select a currency';
     setErrors(e);
     if (Object.keys(e).length) toast('error', 'Please fix the highlighted fields.');
     return Object.keys(e).length === 0;
@@ -280,7 +336,6 @@ export function EmployeesPage() {
         housing_allowance: num(form.housing_allowance),
         transport_allowance: num(form.transport_allowance),
         other_allowance: num(form.other_allowance),
-        salary_currency_id: form.salary_currency_id,
         notes: str(form.notes),
       };
 
@@ -479,14 +534,33 @@ export function EmployeesPage() {
                 Login &amp; role
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Email" required={!editing} error={errors.email} help={HELP.EMAIL}>
+                <Field
+                  label="Email"
+                  required={!editing}
+                  error={errors.email}
+                  help={emailNotice ? undefined : HELP.EMAIL}
+                >
                   <input
                     className="input"
                     value={form.email}
                     disabled={!!editing}
                     onChange={(e) => set('email', e.target.value)}
                   />
+                  {!editing && emailChecking && (
+                    <p className="mt-1 text-xs text-brown-500">Checking email…</p>
+                  )}
+                  {!editing && emailNotice && (
+                    <p
+                      role="alert"
+                      className={`mt-1 text-xs ${
+                        emailNotice.taken ? 'text-brown-600 font-medium' : 'text-forest-500'
+                      }`}
+                    >
+                      {emailNotice.message}
+                    </p>
+                  )}
                 </Field>
+
                 <Field
                   label={editing ? 'New password' : 'Password'}
                   required={!editing}
@@ -708,20 +782,18 @@ export function EmployeesPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Salary currency" required error={errors.salary_currency_id}>
-                  <select
-                    className="input"
-                    value={form.salary_currency_id}
-                    onChange={(e) => set('salary_currency_id', e.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {currencies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} — {c.name}
-                      </option>
-                    ))}
-                  </select>
+                <Field
+                  label="Salary currency"
+                  help="HR payroll is always recorded in Saudi Riyal"
+                >
+                  <input
+                    className="input bg-paper-warm cursor-not-allowed"
+                    value={`${HR_CURRENCY.code} — ${HR_CURRENCY.name}`}
+                    readOnly
+                    disabled
+                  />
                 </Field>
+
                 <Field label="Basic salary" required error={errors.basic_salary}>
                   <input
                     className="input"

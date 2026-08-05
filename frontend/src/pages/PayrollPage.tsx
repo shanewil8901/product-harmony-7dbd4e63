@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { employeesService, payrollService } from '../services/hr.service';
 import { Combobox } from '../components/Combobox';
+import { BulkPayrollForm } from '../components/BulkPayrollForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
 import type { ApiError } from '../services/api';
@@ -164,6 +165,8 @@ export function PayrollPage() {
   return (
     <div className="space-y-6">
       <h1 className="font-serif text-2xl text-ink">Payroll</h1>
+
+      {canEdit && <BulkPayrollForm period={filterPeriod} onDone={load} />}
 
       {canEdit && (
         <form onSubmit={onSubmit} className="card p-4 sm:p-5 space-y-3" noValidate>

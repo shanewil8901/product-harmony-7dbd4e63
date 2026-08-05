@@ -58,8 +58,12 @@ export function DashboardLayout() {
     },
     {
       title: 'My workspace',
-      items: [{ to: '/my-attendance', label: 'Check in / out', icon: IconClock }],
+      items: [
+        { to: '/my-profile', label: 'My profile', icon: IconIdCard },
+        { to: '/my-attendance', label: 'Check in / out', icon: IconClock },
+      ],
     },
+
     ...(canManageUsers
       ? [
           {
