@@ -17,7 +17,12 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import type { RoleCode } from '../master-data/role.entity';
 import { PayrollService } from './payroll.service';
-import { GeneratePayslipDto, UpdatePayslipStatusDto } from './dto/payslip.dto';
+import {
+  BulkGeneratePayslipDto,
+  GeneratePayslipDto,
+  UpdatePayslipStatusDto,
+} from './dto/payslip.dto';
+
 
 interface AuthedRequest {
   user: { id: string; email: string; name: string; role: RoleCode | null };
