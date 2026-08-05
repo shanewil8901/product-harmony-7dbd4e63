@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Payslip, PayslipStatus } from './payslip.entity';
 import { EmployeeProfile } from './employee-profile.entity';
 import { AttendanceService } from './attendance.service';
-import { GeneratePayslipDto } from './dto/payslip.dto';
+import { BulkGeneratePayslipDto, GeneratePayslipDto } from './dto/payslip.dto';
 
 @Injectable()
 export class PayrollService {
@@ -13,6 +13,7 @@ export class PayrollService {
     @InjectRepository(EmployeeProfile) private readonly empRepo: Repository<EmployeeProfile>,
     private readonly attendance: AttendanceService,
   ) {}
+
 
   private enrich(p: Payslip) {
     return {
