@@ -274,3 +274,110 @@ export interface PunchPayload {
   time: string;
   work_date?: string;
 }
+
+/** Read-only result of the login-account lookup done while adding an employee. */
+export interface EmailCheckResult {
+  email: string;
+  exists: boolean;
+  has_employee_profile: boolean;
+  employee_code?: string | null;
+}
+
+export interface BulkPayslipPayload {
+  role: RoleCode;
+  department_id?: string;
+  period: string;
+  overtime_rate?: number;
+  bonus?: number;
+  gosi_deduction?: number;
+  other_deduction?: number;
+  notes?: string;
+}
+
+export interface BulkPayslipResult {
+  period: string;
+  role: string;
+  considered: number;
+  created: { employee_code: string; employee_name: string; net_pay: string }[];
+  skipped: { employee_code: string; employee_name: string; reason: string }[];
+}
+
+export interface SelfAttendanceStats {
+  records: number;
+  present_days: number;
+  absent_days: number;
+  leave_days: number;
+  late_days: number;
+  total_hours: string;
+  total_overtime: string;
+}
+
+export interface EmployeeSelfOverview {
+  employee: {
+    id: string;
+    employee_code: string;
+    full_name: string;
+    email: string | null;
+    role: Role | null;
+    job_title: string;
+    department_name: string | null;
+    join_date: string;
+    contract_type: ContractType;
+    employment_status: EmploymentStatus;
+    mobile: string;
+    nationality: string | null;
+    iqama_number: string;
+    iqama_expiry: string | null;
+    iqama_days_left: number | null;
+    address_line1: string;
+    address_city: string;
+    emergency_contact_name: string | null;
+    emergency_contact_phone: string | null;
+    bank_name: string;
+    iban: string;
+    basic_salary: string;
+    housing_allowance: string;
+    transport_allowance: string;
+    other_allowance: string;
+    gross_salary: string;
+    salary_currency_code: string;
+    tenure_months: number;
+  };
+  attendance: {
+    this_month: SelfAttendanceStats;
+    year_to_date: SelfAttendanceStats;
+    recent: {
+      id: string;
+      work_date: string;
+      status: AttendanceStatus;
+      check_in: string | null;
+      check_out: string | null;
+      worked_hours: string;
+      overtime_hours: string;
+    }[];
+    trend: { period: string; present_days: number; absent_days: number; hours: string }[];
+  };
+  payroll: {
+    currency_code: string;
+    ytd_net_paid: string;
+    last_paid_period: string | null;
+    payslips: {
+      id: string;
+      period: string;
+      status: PayslipStatus;
+      net_pay: string;
+      bonus: string;
+      overtime_amount: string;
+      gosi_deduction: string;
+      unpaid_leave_deduction: string;
+      other_deduction: string;
+      paid_at: string | null;
+    }[];
+  };
+  documents: {
+    id: string;
+    doc_type: EmployeeDocType;
+    file_name: string;
+    uploaded_at: string;
+  }[];
+}
