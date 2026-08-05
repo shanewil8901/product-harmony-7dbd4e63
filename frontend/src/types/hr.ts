@@ -116,7 +116,9 @@ export interface CreateEmployeePayload {
   housing_allowance?: number;
   transport_allowance?: number;
   other_allowance?: number;
-  salary_currency_id: string;
+  /** Ignored by the API — HR salaries are always SAR. */
+  salary_currency_id?: string;
+
   notes?: string;
 }
 
