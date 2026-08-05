@@ -50,6 +50,13 @@ export class PayrollController {
     return this.service.generate(dto, req.user.email);
   }
 
+  /** Bulk run for one role — common values entered once. */
+  @Post('payslips/bulk')
+  generateBulk(@Body() dto: BulkGeneratePayslipDto, @Req() req: AuthedRequest) {
+    return this.service.generateBulk(dto, req.user.email);
+  }
+
+
   @Patch('payslips/:id/status')
   setStatus(
     @Param('id', new ParseUUIDPipe()) id: string,
