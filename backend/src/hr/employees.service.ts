@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { Between, DataSource, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { EmployeeProfile } from './employee-profile.entity';
 import { EmployeeDocument, EmployeeDocType } from './employee-document.entity';
+import { Attendance } from './attendance.entity';
+import { Payslip } from './payslip.entity';
 import { User } from '../users/user.entity';
 import { Role } from '../master-data/role.entity';
 import { Department } from '../master-data/department.entity';
@@ -16,17 +18,23 @@ import { Currency } from '../master-data/currency.entity';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 
+/** HR always pays in Saudi Riyal — the currency is fixed, never user-selectable. */
+export const HR_CURRENCY_CODE = 'SAR';
+
 @Injectable()
 export class EmployeesService {
   constructor(
     @InjectRepository(EmployeeProfile) private readonly repo: Repository<EmployeeProfile>,
     @InjectRepository(EmployeeDocument) private readonly docRepo: Repository<EmployeeDocument>,
+    @InjectRepository(Attendance) private readonly attRepo: Repository<Attendance>,
+    @InjectRepository(Payslip) private readonly payslipRepo: Repository<Payslip>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Role) private readonly roleRepo: Repository<Role>,
     @InjectRepository(Department) private readonly deptRepo: Repository<Department>,
     @InjectRepository(Currency) private readonly currencyRepo: Repository<Currency>,
     private readonly dataSource: DataSource,
   ) {}
+
 
   /** Flatten master-data relations so the API never leaks bare ids. */
   private enrich(e: EmployeeProfile) {
