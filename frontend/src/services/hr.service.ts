@@ -107,6 +107,11 @@ export const payrollService = {
     const { data } = await api.post<Payslip>('/payroll/payslips', payload);
     return data;
   },
+  async generateBulk(payload: BulkPayslipPayload) {
+    const { data } = await api.post<BulkPayslipResult>('/payroll/payslips/bulk', payload);
+    return data;
+  },
+
   async setStatus(id: string, status: PayslipStatus) {
     const { data } = await api.patch<Payslip>(`/payroll/payslips/${id}/status`, { status });
     return data;
