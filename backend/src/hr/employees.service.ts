@@ -203,10 +203,12 @@ export class EmployeesService {
       if (dup) throw new ConflictException('That Iqama / National ID is already registered');
     }
     if (dto.department_id !== undefined) await this.requireDepartment(dto.department_id);
-    if (dto.salary_currency_id !== undefined) await this.requireCurrency(dto.salary_currency_id);
 
-    const { password, role, ...rest } = dto;
+    const { password, role, salary_currency_id: _ignoredCurrency, ...rest } = dto;
     Object.assign(profile, rest, { updated_by: actor });
+    // Salary currency is fixed to SAR for every HR record.
+    profile.salary_currency_id = (await this.payrollCurrency()).id;
+
     if (dto.basic_salary !== undefined) profile.basic_salary = dto.basic_salary.toFixed(2);
     if (dto.housing_allowance !== undefined)
       profile.housing_allowance = dto.housing_allowance.toFixed(2);
