@@ -479,14 +479,33 @@ export function EmployeesPage() {
                 Login &amp; role
               </h3>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Email" required={!editing} error={errors.email} help={HELP.EMAIL}>
+                <Field
+                  label="Email"
+                  required={!editing}
+                  error={errors.email}
+                  help={emailNotice ? undefined : HELP.EMAIL}
+                >
                   <input
                     className="input"
                     value={form.email}
                     disabled={!!editing}
                     onChange={(e) => set('email', e.target.value)}
                   />
+                  {!editing && emailChecking && (
+                    <p className="mt-1 text-xs text-brown-500">Checking email…</p>
+                  )}
+                  {!editing && emailNotice && (
+                    <p
+                      role="alert"
+                      className={`mt-1 text-xs ${
+                        emailNotice.taken ? 'text-brown-600 font-medium' : 'text-forest-500'
+                      }`}
+                    >
+                      {emailNotice.message}
+                    </p>
+                  )}
                 </Field>
+
                 <Field
                   label={editing ? 'New password' : 'Password'}
                   required={!editing}
