@@ -65,12 +65,34 @@ export class EmployeesService {
     return dep;
   }
 
-  private async requireCurrency(id: string | undefined | null) {
-    if (!id) throw new BadRequestException('Salary currency is required');
-    const cur = await this.currencyRepo.findOne({ where: { id } });
-    if (!cur) throw new BadRequestException('Unknown currency — pick one from the list');
-    return cur;
+  /**
+   * HR salaries are always in SAR. Any currency sent by a client is ignored so
+   * existing rows can never be switched to another currency by mistake.
+   */
+  private async payrollCurrency() {
+    const existing = await this.currencyRepo.findOne({ where: { code: HR_CURRENCY_CODE } });
+    if (existing) return existing;
+    // Additive only — never touches existing master data.
+    return this.currencyRepo.save(
+      this.currencyRepo.create({ code: HR_CURRENCY_CODE, name: 'Saudi Riyal', symbol: 'SR' }),
+    );
   }
+
+  /** Non-destructive lookup used by the employee form before submitting. */
+  async checkEmail(email: string) {
+    const value = (email ?? '').trim().toLowerCase();
+    if (!value) throw new BadRequestException('Enter an email address to check');
+    const user = await this.userRepo.findOne({ where: { email: value } });
+    if (!user) return { email: value, exists: false, has_employee_profile: false };
+    const profile = await this.repo.findOne({ where: { user_id: user.id } });
+    return {
+      email: value,
+      exists: true,
+      has_employee_profile: !!profile,
+      employee_code: profile?.employee_code ?? null,
+    };
+  }
+
 
   private async nextEmployeeCode() {
     const last = await this.repo
