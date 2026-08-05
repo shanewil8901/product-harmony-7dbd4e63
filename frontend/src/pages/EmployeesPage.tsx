@@ -273,6 +273,7 @@ export function EmployeesPage() {
     if (!editing) {
       if (!form.email.trim()) e.email = 'Required';
       else if (!EMAIL_RE.test(form.email)) e.email = 'Enter a valid email address';
+      else if (emailNotice?.taken) e.email = emailNotice.message;
       if (!form.password) e.password = 'Required';
       else if (form.password.length < 6) e.password = HELP.PASSWORD;
     } else if (form.password && form.password.length < 6) {
@@ -295,7 +296,6 @@ export function EmployeesPage() {
     if (form.basic_salary === '' || Number.isNaN(Number(form.basic_salary)))
       e.basic_salary = 'Enter a valid amount';
     else if (Number(form.basic_salary) < 0) e.basic_salary = 'Cannot be negative';
-    if (!form.salary_currency_id) e.salary_currency_id = 'Select a currency';
     setErrors(e);
     if (Object.keys(e).length) toast('error', 'Please fix the highlighted fields.');
     return Object.keys(e).length === 0;
@@ -334,7 +334,6 @@ export function EmployeesPage() {
         housing_allowance: num(form.housing_allowance),
         transport_allowance: num(form.transport_allowance),
         other_allowance: num(form.other_allowance),
-        salary_currency_id: form.salary_currency_id,
         notes: str(form.notes),
       };
 
