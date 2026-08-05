@@ -708,20 +708,18 @@ export function EmployeesPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="Salary currency" required error={errors.salary_currency_id}>
-                  <select
-                    className="input"
-                    value={form.salary_currency_id}
-                    onChange={(e) => set('salary_currency_id', e.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {currencies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.code} — {c.name}
-                      </option>
-                    ))}
-                  </select>
+                <Field
+                  label="Salary currency"
+                  help="HR payroll is always recorded in Saudi Riyal"
+                >
+                  <input
+                    className="input bg-paper-warm cursor-not-allowed"
+                    value={`${HR_CURRENCY.code} — ${HR_CURRENCY.name}`}
+                    readOnly
+                    disabled
+                  />
                 </Field>
+
                 <Field label="Basic salary" required error={errors.basic_salary}>
                   <input
                     className="input"
