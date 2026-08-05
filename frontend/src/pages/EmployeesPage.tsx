@@ -157,7 +157,6 @@ export function EmployeesPage() {
     return () => {
       cancelled = true;
       window.clearTimeout(t);
-      window.clearTimeout(t);
       setEmailChecking(false);
     };
   }, [form.email, editing, modalOpen]);
