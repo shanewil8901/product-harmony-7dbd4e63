@@ -368,7 +368,6 @@ function StockModal({ products, onClose, onSubmit }: ModalProps) {
   const [err, setErr] = useState<string | null>(null);
 
   const selectedProduct = products.find((p) => p.id === productId);
-  const selectedVendor = vendors.find((v) => v.id === vendorId);
 
   useEffect(() => {
     if (selectedProduct?.base_uom_id) setQtyUom(selectedProduct.base_uom_id);
