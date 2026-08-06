@@ -43,8 +43,11 @@ export class EmployeesService {
       Number(e.housing_allowance) +
       Number(e.transport_allowance) +
       Number(e.other_allowance);
+    // `user` carries the bcrypt hash; the spread bypasses class-transformer so
+    // it must be dropped explicitly before the profile leaves the service.
+    const { user: _account, ...safe } = e;
     return {
-      ...e,
+      ...safe,
       full_name: `${e.first_name} ${e.last_name}`.trim(),
       email: e.user?.email ?? null,
       role: e.user?.role
