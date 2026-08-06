@@ -3,7 +3,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import type { RoleCode } from '../master-data/role.entity';
+
+interface AuthedRequest {
+  user: { id: string; email: string; name: string };
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -15,10 +18,26 @@ export class AuthController {
     return this.auth.login(dto);
   }
 
+  /**
+   * Returns the *current* account straight from the database (not the token
+   * snapshot) so the role object — and any role change — is always accurate
+   * after a page refresh.
+   */
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: { user: { id: string; email: string; name: string; role: RoleCode | null } }) {
-    return req.user;
+  me(@Req() req: AuthedRequest) {
+    return this.auth.profile(req.user.id);
+  }
+
+  /**
+   * Slides the session forward while the user is actively working.
+   * Requires a still-valid token; expired tokens must sign in again.
+   */
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  refresh(@Req() req: AuthedRequest) {
+    return this.auth.refresh(req.user.id);
   }
 }
