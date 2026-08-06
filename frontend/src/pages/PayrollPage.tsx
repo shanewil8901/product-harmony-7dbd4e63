@@ -4,7 +4,7 @@ import { Combobox } from '../components/Combobox';
 import { BulkPayrollForm } from '../components/BulkPayrollForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
-import type { ApiError } from '../services/api';
+import { notifyApiError, type ApiError } from '../services/api';
 import {
   PAYSLIP_STATUSES,
   PAYSLIP_STATUS_LABEL,
@@ -76,7 +76,7 @@ export function PayrollPage() {
       try {
         setEmployees(await employeesService.list({ status: 'active' }));
       } catch (e) {
-        toast('error', (e as ApiError).userMessage ?? 'Could not load employees');
+        notifyApiError(e, 'Could not load employees');
       }
       await load();
     })();
@@ -136,7 +136,7 @@ export function PayrollPage() {
     } catch (err) {
       const apiErr = err as ApiError;
       setErrors(apiErr.fieldErrors ?? {});
-      toast('error', apiErr.userMessage ?? 'Could not generate payslip');
+      notifyApiError(apiErr, 'Could not generate payslip');
     } finally {
       setSaving(false);
     }
@@ -148,7 +148,7 @@ export function PayrollPage() {
       toast('success', `Payslip ${PAYSLIP_STATUS_LABEL[status].toLowerCase()}`);
       await load();
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Could not update payslip');
+      notifyApiError(err, 'Could not update payslip');
     }
   };
 
@@ -158,7 +158,7 @@ export function PayrollPage() {
       toast('success', 'Payslip deleted');
       await load();
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Could not delete payslip');
+      notifyApiError(err, 'Could not delete payslip');
     }
   };
 

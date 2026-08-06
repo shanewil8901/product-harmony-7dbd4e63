@@ -3,7 +3,7 @@ import { attendanceService, employeesService } from '../services/hr.service';
 import { Combobox } from '../components/Combobox';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
-import type { ApiError } from '../services/api';
+import { notifyApiError, type ApiError } from '../services/api';
 import {
   ATTENDANCE_LABEL,
   ATTENDANCE_STATUSES,
@@ -68,7 +68,7 @@ export function AttendancePage() {
       try {
         setEmployees(await employeesService.list());
       } catch (e) {
-        toast('error', (e as ApiError).userMessage ?? 'Could not load employees');
+        notifyApiError(e, 'Could not load employees');
       }
       await load();
     })();
@@ -135,7 +135,7 @@ export function AttendancePage() {
     } catch (err) {
       const apiErr = err as ApiError;
       setErrors(apiErr.fieldErrors ?? {});
-      toast('error', apiErr.userMessage ?? 'Could not save attendance');
+      notifyApiError(apiErr, 'Could not save attendance');
     } finally {
       setSaving(false);
     }
@@ -147,7 +147,7 @@ export function AttendancePage() {
       toast('success', 'Attendance record removed');
       await load();
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Could not delete record');
+      notifyApiError(err, 'Could not delete record');
     }
   };
 

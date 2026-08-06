@@ -4,7 +4,7 @@ import { masterDataService } from '../services/masterData.service';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
 import { EMAIL_RE, HELP, KSA } from '../lib/validators';
-import type { ApiError } from '../services/api';
+import { notifyApiError, type ApiError } from '../services/api';
 import type { Currency, Department, Role, RoleCode } from '../types/product';
 import {
   HR_CURRENCY,
@@ -196,7 +196,7 @@ export function EmployeesPage() {
         setDepartments(d);
         setCurrencies(c);
       } catch (e) {
-        toast('error', (e as ApiError).userMessage ?? 'Could not load master data');
+        notifyApiError(e, 'Could not load master data');
       }
       await load();
     })();
@@ -360,7 +360,7 @@ export function EmployeesPage() {
     } catch (err) {
       const apiErr = err as ApiError;
       setErrors({ ...apiErr.fieldErrors });
-      toast('error', apiErr.userMessage ?? 'Could not save employee');
+      notifyApiError(apiErr, 'Could not save employee');
     } finally {
       setSaving(false);
     }
@@ -372,7 +372,7 @@ export function EmployeesPage() {
     try {
       setDocs(await employeesService.documents(e.id));
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Could not load documents');
+      notifyApiError(err, 'Could not load documents');
       setDocs([]);
     }
   };
@@ -385,7 +385,7 @@ export function EmployeesPage() {
       setDocs(await employeesService.documents(docsFor.id));
       toast('success', 'Document uploaded');
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Upload failed');
+      notifyApiError(err, 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -398,7 +398,7 @@ export function EmployeesPage() {
       setDocs((d) => d.filter((x) => x.id !== docId));
       toast('success', 'Document removed');
     } catch (err) {
-      toast('error', (err as ApiError).userMessage ?? 'Could not delete document');
+      notifyApiError(err, 'Could not delete document');
     }
   };
 

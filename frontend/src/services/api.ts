@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import { toast } from '../lib/toast';
+import { toast, type ToastDetail } from '../lib/toast';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1',
@@ -31,6 +31,8 @@ export interface ApiErrorPayload {
 
 export interface ApiError extends AxiosError {
   userMessage: string;
+  /** True when the response interceptor already alerted the user. */
+  handled?: boolean;
   apiError?: ApiErrorPayload;
   fieldErrors: Record<string, string>;
 }
