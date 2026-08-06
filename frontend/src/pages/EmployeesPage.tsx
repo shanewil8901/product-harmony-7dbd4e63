@@ -76,7 +76,9 @@ function Field({
       </label>
       {children}
       {error ? (
-        <p className="mt-1 text-xs text-brown-600">{error}</p>
+        <p className="mt-1 text-xs text-brown-600" role="alert">
+          {error}
+        </p>
       ) : help ? (
         <p className="mt-1 text-xs text-brown-400">{help}</p>
       ) : null}
@@ -269,13 +271,16 @@ export function EmployeesPage() {
 
   const validate = () => {
     const e: Record<string, string> = {};
+    const emailTaken = !editing && !!emailNotice?.taken;
     const req = (k: string, msg = 'Required') => {
       if (!form[k]?.trim()) e[k] = msg;
     };
     if (!editing) {
-      if (!form.email.trim()) e.email = 'Required';
+      if (!form.email.trim()) e.email = 'Email is required';
       else if (!EMAIL_RE.test(form.email)) e.email = 'Enter a valid email address';
-      else if (emailNotice?.taken) e.email = emailNotice.message;
+      // When the email is already taken the inline notice under the field says
+      // so — don't repeat the same sentence as a field error too.
+      else if (emailNotice?.taken) e.email = '';
       if (!form.password) e.password = 'Required';
       else if (form.password.length < 6) e.password = HELP.PASSWORD;
     } else if (form.password && form.password.length < 6) {
@@ -299,7 +304,18 @@ export function EmployeesPage() {
       e.basic_salary = 'Enter a valid amount';
     else if (Number(form.basic_salary) < 0) e.basic_salary = 'Cannot be negative';
     setErrors(e);
-    if (Object.keys(e).length) toast('error', 'Please fix the highlighted fields.');
+    const problems = Object.entries(e).filter(([, msg]) => msg);
+    if (Object.keys(e).length) {
+      toast(
+        'error',
+        emailTaken && problems.length === 0
+          ? 'This email already has a login account. Use a different email.'
+          : `Please correct ${problems.length || 1} field${problems.length > 1 ? 's' : ''}:`,
+        problems.length
+          ? problems.map(([field, message]) => ({ field, message }))
+          : [{ field: 'email', message: emailNotice?.message ?? 'Already in use' }],
+      );
+    }
     return Object.keys(e).length === 0;
   };
 

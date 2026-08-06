@@ -101,8 +101,10 @@ api.interceptors.response.use(
       setToken(null);
       // Session handling (refresh / redirect) is owned by the auth layer;
       // background probes stay silent so the user never sees a stray alert.
-      if (!url.endsWith('/auth/me') && !url.endsWith('/auth/refresh')) {
+      const isProbe = url.endsWith('/auth/me') || url.endsWith('/auth/refresh');
+      if (!isProbe && !window.location.pathname.startsWith('/login')) {
         notify('Your session has ended. Please sign in again.');
+        window.location.href = '/login';
       } else {
         enriched.handled = true;
       }
