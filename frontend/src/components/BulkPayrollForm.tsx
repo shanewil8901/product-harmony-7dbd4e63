@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { payrollService } from '../services/hr.service';
 import { masterDataService } from '../services/masterData.service';
 import { toast } from '../lib/toast';
-import { notifyApiError, type ApiError } from '../services/api';
+import { notifyApiError } from '../services/api';
 import type { Department, Role, RoleCode } from '../types/product';
 import { HR_CURRENCY, type BulkPayslipResult } from '../types/hr';
 

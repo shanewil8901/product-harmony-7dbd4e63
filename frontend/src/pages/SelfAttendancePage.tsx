@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Combobox } from '../components/Combobox';
 import { selfAttendanceService } from '../services/hr.service';
 import { toast } from '../lib/toast';
-import { notifyApiError, type ApiError } from '../services/api';
+import { notifyApiError } from '../services/api';
 import type { AttendanceDayState, EmployeeDirectoryEntry } from '../types/hr';
 import { ATTENDANCE_LABEL } from '../types/hr';
 
