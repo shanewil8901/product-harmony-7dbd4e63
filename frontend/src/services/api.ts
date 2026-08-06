@@ -81,28 +81,73 @@ api.interceptors.response.use(
     enriched.userMessage = message;
     enriched.apiError = apiError;
     enriched.fieldErrors = fieldErrors;
+    enriched.handled = false;
 
     const status = err.response?.status;
     const url = (err.config?.url ?? '') as string;
+    const details = apiError?.details?.map((d) => ({
+      field: d.field,
+      message: humaniseDetail(d),
+    }));
+
+    const notify = (msg: string, list?: ToastDetail[]) => {
+      enriched.handled = true;
+      toast('error', msg, list);
+    };
 
     if (status === 401) {
       setToken(null);
-      if (!window.location.pathname.startsWith('/login')) {
-        // Skip toast for background /auth/me probes; show for user-initiated flows.
-        if (!url.endsWith('/auth/me')) toast('error', 'Session expired. Please sign in again.');
-        window.location.href = '/login';
+      // Session handling (refresh / redirect) is owned by the auth layer;
+      // background probes stay silent so the user never sees a stray alert.
+      if (!url.endsWith('/auth/me') && !url.endsWith('/auth/refresh')) {
+        notify('Your session has ended. Please sign in again.');
+      } else {
+        enriched.handled = true;
       }
     } else if (status === 403) {
-      toast('error', message || 'You do not have permission to perform this action.');
+      notify(
+        message && message !== 'Insufficient role'
+          ? message
+          : 'You do not have permission to do this. Ask an admin or manager for access.',
+      );
     } else if (status === 422) {
-      toast('error', 'Please fix the highlighted fields.');
-    } else if (status && status >= 400 && status !== 400) {
-      // 400 is often shown inline; still notify for 404/409/500 etc.
-      toast('error', message);
+      notify(
+        details?.length
+          ? `Please correct ${details.length} field${details.length > 1 ? 's' : ''} below:`
+          : message || 'Some of the entered values are not valid.',
+        details,
+      );
+    } else if (status === 409) {
+      notify(message || 'That record already exists.');
+    } else if (status === 404) {
+      notify(message || 'That record no longer exists. Refresh the page and try again.');
+    } else if (status && status >= 500) {
+      notify(message || 'The server could not complete the request. Please try again.');
+    } else if (status === 400) {
+      notify(message || 'The request could not be completed. Check the entered values.');
     } else if (!err.response) {
-      toast('error', message);
+      notify('Cannot reach the server. Check your connection and try again.');
     }
 
     return Promise.reject(enriched);
   },
 );
+
+/** Rewrite class-validator text into a plain sentence, e.g. "Mobile: must be …". */
+function humaniseDetail(d: { field?: string; message: string }): string {
+  if (!d.field) return d.message;
+  const stripped = d.message.replace(new RegExp(`^${d.field}\\s+`), '');
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
+
+/**
+ * Report an API failure exactly once. The response interceptor already alerts
+ * the user for every recognised status, so this only fires for anything it
+ * could not classify — no more double toasts for a single failure.
+ */
+export function notifyApiError(err: unknown, fallback: string) {
+  const e = err as Partial<ApiError> | undefined;
+  if (e && e.handled) return;
+  toast('error', e?.userMessage || fallback);
+}
+
