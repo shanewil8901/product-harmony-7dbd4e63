@@ -109,7 +109,12 @@ export function AttendancePage() {
     if (overtime && (Number.isNaN(Number(overtime)) || Number(overtime) < 0 || Number(overtime) > 24))
       e.overtime_hours = 'Enter 0–24 hours';
     setErrors(e);
-    if (Object.keys(e).length) toast('error', 'Please fix the highlighted fields.');
+    if (Object.keys(e).length)
+      toast(
+        'error',
+        `Please correct ${Object.keys(e).length} field${Object.keys(e).length > 1 ? 's' : ''}:`,
+        Object.entries(e).map(([field, message]) => ({ field, message })),
+      );
     return Object.keys(e).length === 0;
   };
 

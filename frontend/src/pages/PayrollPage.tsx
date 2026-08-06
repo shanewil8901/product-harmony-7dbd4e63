@@ -124,7 +124,11 @@ export function PayrollPage() {
     };
     setErrors(e);
     if (Object.keys(e).length) {
-      toast('error', 'Please fix the highlighted fields.');
+      toast(
+        'error',
+        `Please correct ${Object.keys(e).length} field${Object.keys(e).length > 1 ? 's' : ''}:`,
+        Object.entries(e).map(([field, message]) => ({ field, message: String(message) })),
+      );
       return;
     }
     setSaving(true);
