@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Combobox } from '../components/Combobox';
 import { selfAttendanceService } from '../services/hr.service';
 import { toast } from '../lib/toast';
-import type { ApiError } from '../services/api';
+import { notifyApiError } from '../services/api';
 import type { AttendanceDayState, EmployeeDirectoryEntry } from '../types/hr';
 import { ATTENDANCE_LABEL } from '../types/hr';
 
@@ -37,7 +37,7 @@ export function SelfAttendancePage() {
       try {
         setDirectory(await selfAttendanceService.directory());
       } catch (e) {
-        toast('error', (e as ApiError).userMessage ?? 'Could not load the employee list');
+        notifyApiError(e, 'Could not load the employee list');
       } finally {
         setLoading(false);
       }
@@ -95,7 +95,7 @@ export function SelfAttendancePage() {
       setKind(saved.check_in && !saved.check_out ? 'out' : 'in');
       toast('success', kind === 'in' ? 'Checked in' : 'Checked out');
     } catch (e) {
-      toast('error', (e as ApiError).userMessage ?? 'Could not record attendance');
+      notifyApiError(e, 'Could not record attendance');
     } finally {
       setSaving(false);
     }

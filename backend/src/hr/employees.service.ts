@@ -43,8 +43,11 @@ export class EmployeesService {
       Number(e.housing_allowance) +
       Number(e.transport_allowance) +
       Number(e.other_allowance);
+    // `user` carries the bcrypt hash; the spread bypasses class-transformer so
+    // it must be dropped explicitly before the profile leaves the service.
+    const { user: _account, ...safe } = e;
     return {
-      ...e,
+      ...safe,
       full_name: `${e.first_name} ${e.last_name}`.trim(),
       email: e.user?.email ?? null,
       role: e.user?.role
@@ -222,14 +225,19 @@ export class EmployeesService {
     // Credentials / role live on the linked user account.
     const user = await this.userRepo.findOne({ where: { id: profile.user_id } });
     if (user) {
-      if (password) user.password = await bcrypt.hash(password, 10);
+      // NOTE: User.role is an eager relation. Calling repo.save() with the stale
+      // relation object silently reverts role_id, which is why role changes never
+      // stuck. A targeted column update writes exactly what we intend.
+      const patch: { name: string; password?: string; role_id?: string } = {
+        name: `${profile.first_name} ${profile.last_name}`.trim(),
+      };
+      if (password) patch.password = await bcrypt.hash(password, 10);
       if (role) {
         const roleRow = await this.roleRepo.findOne({ where: { code: role } });
         if (!roleRow) throw new BadRequestException('Unknown role — pick one from the list');
-        user.role_id = roleRow.id;
+        patch.role_id = roleRow.id;
       }
-      user.name = `${profile.first_name} ${profile.last_name}`.trim();
-      await this.userRepo.save(user);
+      await this.userRepo.update({ id: user.id }, patch);
     }
     return this.findOne(id);
   }

@@ -153,7 +153,11 @@ export function DashboardPage() {
         </ChartCard>
 
         <ChartCard title="Products by department" subtitle="Catalogue composition">
-          <DonutChart data={data.products_by_department.slice(0, 6)} />
+          <DonutChart
+            data={data.products_by_department
+              .slice(0, 6)
+              .map((d) => ({ label: d.label, value: d.count }))}
+          />
         </ChartCard>
       </div>
 

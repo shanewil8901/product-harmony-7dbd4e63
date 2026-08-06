@@ -16,6 +16,12 @@ export const authService = {
     const { data } = await api.get<AuthUser>('/auth/me');
     return data;
   },
+  /** Slides the session forward while the user is active. */
+  async refresh() {
+    const { data } = await api.post<AuthResponse>('/auth/refresh');
+    setToken(data.access_token);
+    return data.user;
+  },
   logout() {
     setToken(null);
   },
