@@ -8,7 +8,17 @@ import type {
 } from '../types/vendor';
 
 export const vendorsService = {
-  async list(params: { search?: string; status?: string; page?: number; limit?: number } = {}) {
+  async list(
+    params: {
+      search?: string;
+      search_field?: string;
+      status?: string;
+      sort?: string;
+      order?: 'asc' | 'desc';
+      page?: number;
+      limit?: number;
+    } = {},
+  ) {
     const { data } = await api.get<VendorPage>('/vendors', { params });
     return data;
   },

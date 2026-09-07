@@ -54,13 +54,19 @@ export class VendorsController {
   @Get()
   findAll(
     @Query('search') search?: string,
+    @Query('search_field') search_field?: string,
     @Query('status') status?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.service.findAll({
       search,
+      search_field,
       status,
+      sort,
+      order,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
     });

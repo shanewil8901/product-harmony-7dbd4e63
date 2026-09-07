@@ -19,6 +19,9 @@ export function CustomersPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | "active" | "inactive">("");
   const [type, setType] = useState<"" | CustomerType>("");
+  const [searchField, setSearchField] = useState("");
+  const [sort, setSort] = useState<"code" | "name">("code");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -30,6 +33,9 @@ export function CustomersPage() {
     try {
       const data = await customersService.list({
         search: search.trim() || undefined,
+        search_field: searchField || undefined,
+        sort,
+        order,
         status: status || undefined,
         customer_type: type || undefined,
         limit: 100,
@@ -46,7 +52,16 @@ export function CustomersPage() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sort, order]);
+
+  const toggleSort = (col: "code" | "name") => {
+    if (sort === col) setOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else {
+      setSort(col);
+      setOrder("asc");
+    }
+  };
+  const arrow = (col: "code" | "name") => (sort === col ? (order === "asc" ? " ▲" : " ▼") : "");
 
   const remove = async (c: Customer) => {
     const ok = await confirm({
@@ -88,6 +103,22 @@ export function CustomersPage() {
           />
         </div>
         <div>
+          <label className="label">Search in</label>
+          <select
+            className="input"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+          >
+            <option value="">All fields</option>
+            <option value="code">Customer code</option>
+            <option value="name">Customer name</option>
+            <option value="cr">CR number</option>
+            <option value="vat">VAT number</option>
+            <option value="national_id">National ID</option>
+            <option value="phone">Phone</option>
+          </select>
+        </div>
+        <div>
           <label className="label">Type</label>
           <select
             className="input"
@@ -126,8 +157,24 @@ export function CustomersPage() {
             <table className="w-full text-sm min-w-[1100px]">
               <thead className="bg-paper-warm text-left text-xs uppercase tracking-wide text-brown-500">
                 <tr>
-                  <th className="px-4 py-3 whitespace-nowrap">Code</th>
-                  <th className="px-4 py-3 whitespace-nowrap">Customer</th>
+                  <th className="px-4 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="uppercase tracking-wide hover:text-ink"
+                      onClick={() => toggleSort("code")}
+                    >
+                      Code{arrow("code")}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="uppercase tracking-wide hover:text-ink"
+                      onClick={() => toggleSort("name")}
+                    >
+                      Customer{arrow("name")}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 whitespace-nowrap">Type</th>
                   <th className="px-4 py-3 whitespace-nowrap">CR / VAT</th>
                   <th className="px-4 py-3 whitespace-nowrap">Contact</th>

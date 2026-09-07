@@ -21,7 +21,16 @@ export class CustomersService {
     @InjectRepository(CustomerDocument) private readonly docRepo: Repository<CustomerDocument>,
   ) {}
 
-  async findAll(q: { search?: string; status?: string; customer_type?: string; page?: number; limit?: number }) {
+  async findAll(q: {
+    search?: string;
+    search_field?: string;
+    status?: string;
+    customer_type?: string;
+    sort?: string;
+    order?: string;
+    page?: number;
+    limit?: number;
+  }) {
     // Guard against NaN / negative / oversized paging values from raw query strings.
     const page = Number.isFinite(Number(q.page)) && Number(q.page) > 0 ? Math.floor(Number(q.page)) : 1;
     const limit = Number.isFinite(Number(q.limit)) && Number(q.limit) > 0
@@ -32,18 +41,33 @@ export class CustomersService {
     if (q.customer_type) qb.andWhere('c.customer_type = :ct', { ct: q.customer_type });
     if (q.search?.trim()) {
       const term = `%${q.search.trim()}%`;
+      const fieldMap: Record<string, string[]> = {
+        code: ['c.code'],
+        name: ['c.legal_name', 'c.legal_name_ar'],
+        cr: ['c.cr_number'],
+        vat: ['c.vat_number'],
+        national_id: ['c.national_id'],
+        phone: ['c.phone'],
+      };
+      const cols = fieldMap[q.search_field ?? ''] ?? [
+        'c.legal_name',
+        'c.legal_name_ar',
+        'c.code',
+        'c.cr_number',
+        'c.vat_number',
+        'c.national_id',
+        'c.phone',
+      ];
       qb.andWhere(
-        new Brackets((b) =>
-          b.where('c.legal_name LIKE :t', { t: term })
-            .orWhere('c.legal_name_ar LIKE :t', { t: term })
-            .orWhere('c.code LIKE :t', { t: term })
-            .orWhere('c.cr_number LIKE :t', { t: term })
-            .orWhere('c.national_id LIKE :t', { t: term })
-            .orWhere('c.phone LIKE :t', { t: term }),
-        ),
+        new Brackets((b) => {
+          cols.forEach((c2, i) => (i === 0 ? b.where(`${c2} LIKE :t`, { t: term }) : b.orWhere(`${c2} LIKE :t`, { t: term })));
+        }),
       );
     }
-    qb.orderBy('c.created_at', 'DESC').skip((page - 1) * limit).take(limit);
+    const sortMap: Record<string, string> = { code: 'c.code', name: 'c.legal_name' };
+    const sortCol = sortMap[q.sort ?? ''] ?? 'c.created_at';
+    const dir: 'ASC' | 'DESC' = String(q.order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    qb.orderBy(sortCol, dir).skip((page - 1) * limit).take(limit);
     const [rows, total] = await qb.getManyAndCount();
     return { items: rows, total, page, limit };
   }

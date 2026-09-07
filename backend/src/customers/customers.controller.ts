@@ -53,15 +53,21 @@ export class CustomersController {
   @Get()
   findAll(
     @Query('search') search?: string,
+    @Query('search_field') search_field?: string,
     @Query('status') status?: string,
     @Query('customer_type') customer_type?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.service.findAll({
       search,
+      search_field,
       status,
       customer_type,
+      sort,
+      order,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
     });

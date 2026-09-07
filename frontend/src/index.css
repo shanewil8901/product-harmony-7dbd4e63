@@ -85,3 +85,14 @@
     @apply bg-paper rounded-2xl shadow-card border border-brown-50;
   }
 }
+
+/* Hint text must always look lighter than typed values, even inside fields
+   that use the monospace utility class. */
+input::placeholder,
+textarea::placeholder {
+  color: #b5a88f !important;
+  opacity: 1;
+  font-family: Inter, system-ui, sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: normal;
+}

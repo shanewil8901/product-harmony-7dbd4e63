@@ -10,6 +10,9 @@ import type {
 export const customersService = {
   async list(params: {
     search?: string;
+    search_field?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
     status?: string;
     customer_type?: string;
     page?: number;

@@ -15,6 +15,9 @@ export function VendorsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | "active" | "inactive">("");
+  const [searchField, setSearchField] = useState("");
+  const [sort, setSort] = useState<"code" | "name">("code");
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Vendor | null>(null);
@@ -26,7 +29,10 @@ export function VendorsPage() {
     try {
       const data = await vendorsService.list({
         search: search.trim() || undefined,
+        search_field: searchField || undefined,
         status: status || undefined,
+        sort,
+        order,
         limit: 100,
       });
       setRows(data.items);
@@ -41,7 +47,16 @@ export function VendorsPage() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sort, order]);
+
+  const toggleSort = (col: "code" | "name") => {
+    if (sort === col) setOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else {
+      setSort(col);
+      setOrder("asc");
+    }
+  };
+  const arrow = (col: "code" | "name") => (sort === col ? (order === "asc" ? " ▲" : " ▼") : "");
 
   const remove = async (v: Vendor) => {
     const ok = await confirm({
@@ -83,6 +98,21 @@ export function VendorsPage() {
           />
         </div>
         <div>
+          <label className="label">Search in</label>
+          <select
+            className="input"
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+          >
+            <option value="">All fields</option>
+            <option value="code">Vendor code</option>
+            <option value="name">Vendor name</option>
+            <option value="cr">CR number</option>
+            <option value="vat">VAT number</option>
+            <option value="phone">Phone</option>
+          </select>
+        </div>
+        <div>
           <label className="label">Status</label>
           <select
             className="input"
@@ -109,8 +139,24 @@ export function VendorsPage() {
             <table className="w-full text-sm min-w-[950px]">
               <thead className="bg-paper-warm text-left text-xs uppercase tracking-wide text-brown-500">
                 <tr>
-                  <th className="px-4 py-3 whitespace-nowrap">Code</th>
-                  <th className="px-4 py-3 whitespace-nowrap">Vendor</th>
+                  <th className="px-4 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="uppercase tracking-wide hover:text-ink"
+                      onClick={() => toggleSort("code")}
+                    >
+                      Code{arrow("code")}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="uppercase tracking-wide hover:text-ink"
+                      onClick={() => toggleSort("name")}
+                    >
+                      Vendor{arrow("name")}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 whitespace-nowrap">CR / VAT</th>
                   <th className="px-4 py-3 whitespace-nowrap">Contact</th>
                   <th className="px-4 py-3 whitespace-nowrap">Terms</th>

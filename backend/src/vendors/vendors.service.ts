@@ -22,7 +22,15 @@ export class VendorsService {
     @InjectRepository(VendorDocument) private readonly docRepo: Repository<VendorDocument>,
   ) {}
 
-  async findAll(q: { search?: string; status?: string; page?: number; limit?: number }) {
+  async findAll(q: {
+    search?: string;
+    search_field?: string;
+    status?: string;
+    sort?: string;
+    order?: string;
+    page?: number;
+    limit?: number;
+  }) {
     // Guard against NaN / negative / oversized paging values from raw query strings.
     const page = Number.isFinite(Number(q.page)) && Number(q.page) > 0 ? Math.floor(Number(q.page)) : 1;
     const limit = Number.isFinite(Number(q.limit)) && Number(q.limit) > 0
@@ -34,18 +42,31 @@ export class VendorsService {
     if (q.status) qb.andWhere('v.status = :status', { status: q.status });
     if (q.search?.trim()) {
       const term = `%${q.search.trim()}%`;
+      const fieldMap: Record<string, string[]> = {
+        code: ['v.code'],
+        name: ['v.legal_name', 'v.legal_name_ar'],
+        cr: ['v.cr_number'],
+        vat: ['v.vat_number'],
+        phone: ['v.phone'],
+      };
+      const cols = fieldMap[q.search_field ?? ''] ?? [
+        'v.legal_name',
+        'v.legal_name_ar',
+        'v.code',
+        'v.cr_number',
+        'v.vat_number',
+        'v.phone',
+      ];
       qb.andWhere(
-        new Brackets((b) =>
-          b.where('v.legal_name LIKE :t', { t: term })
-            .orWhere('v.legal_name_ar LIKE :t', { t: term })
-            .orWhere('v.code LIKE :t', { t: term })
-            .orWhere('v.cr_number LIKE :t', { t: term })
-            .orWhere('v.vat_number LIKE :t', { t: term })
-            .orWhere('v.phone LIKE :t', { t: term }),
-        ),
+        new Brackets((b) => {
+          cols.forEach((c, i) => (i === 0 ? b.where(`${c} LIKE :t`, { t: term }) : b.orWhere(`${c} LIKE :t`, { t: term })));
+        }),
       );
     }
-    qb.orderBy('v.created_at', 'DESC').skip((page - 1) * limit).take(limit);
+    const sortMap: Record<string, string> = { code: 'v.code', name: 'v.legal_name' };
+    const sortCol = sortMap[q.sort ?? ''] ?? 'v.created_at';
+    const dir: 'ASC' | 'DESC' = String(q.order).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    qb.orderBy(sortCol, dir).skip((page - 1) * limit).take(limit);
     const [rows, total] = await qb.getManyAndCount();
     return { items: rows, total, page, limit };
   }
