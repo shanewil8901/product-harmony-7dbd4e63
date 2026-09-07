@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "composite": true
+  },
+  "references": [
+    { "path": "./frontend/tsconfig.json" }
+  ],
+  "files": []
+}
