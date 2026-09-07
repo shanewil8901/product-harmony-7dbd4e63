@@ -1,20 +1,26 @@
+# syntax=docker/dockerfile:1
+
+# ---------- dependencies (fast: bun + cache mount) ----------
+FROM oven/bun:1-alpine AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile
+
 # ---------- build stage ----------
 FROM node:20-alpine AS build
 WORKDIR /app
-
-COPY package*.json ./
-# No package-lock.json is committed for the backend, so `npm ci` would fail.
-RUN npm ci || npm install
-
+COPY --from=deps /app/node_modules ./node_modules
 COPY tsconfig*.json nest-cli.json ./
 COPY src ./src
 RUN npm run build
 
-# ---------- production deps ----------
-FROM node:20-alpine AS deps
+# ---------- prune to production deps ----------
+FROM oven/bun:1-alpine AS prod-deps
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev || npm install --omit=dev
+COPY package.json bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --production
 
 # ---------- runtime ----------
 FROM node:20-alpine AS runtime
@@ -24,7 +30,7 @@ ENV PORT=3000
 
 RUN apk add --no-cache wget && addgroup -S app && adduser -S app -G app
 
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
 

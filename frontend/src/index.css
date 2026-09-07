@@ -35,6 +35,14 @@
   option {
     @apply text-ink bg-paper;
   }
+  /* Hint/example text inside fields: noticeably lighter than real input
+     values, in the regular UI font, on every page. */
+  ::placeholder {
+    color: #b5a88f;
+    opacity: 1; /* Firefox dims placeholders by default */
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 400;
+  }
 }
 
 @layer components {
@@ -57,7 +65,7 @@
     @apply btn bg-transparent text-brown-500 hover:bg-brown-50 border border-brown-200;
   }
   .input {
-    @apply w-full rounded-lg border border-brown-100 bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-gold-300 focus:border-gold-300 min-h-10;
+    @apply w-full rounded-lg border border-brown-100 bg-paper px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-gold-300 focus:border-gold-300 min-h-10;
     line-height: 1.25rem;
   }
   /* Custom dropdown trigger (Combobox) — identical to a native select. */

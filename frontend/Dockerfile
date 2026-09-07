@@ -1,10 +1,17 @@
+# syntax=docker/dockerfile:1
+
+# ---------- dependencies (fast: bun + cache mount) ----------
+FROM oven/bun:1-alpine AS deps
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile
+
 # ---------- build stage ----------
 FROM node:20-alpine AS build
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci || npm install
-
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
 COPY . .
 # Baked at build time; override with --build-arg VITE_API_URL=...
 ARG VITE_API_URL=/api/v1
