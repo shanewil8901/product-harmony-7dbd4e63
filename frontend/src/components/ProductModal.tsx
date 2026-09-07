@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Product, ProductInput } from '../types/product';
 import { useMasterData } from '../hooks/useMasterData';
+import { vendorsService } from '../services/vendors.service';
+import type { Vendor } from '../types/vendor';
 import { ProductBarcode } from './ProductBarcode';
 
 interface Props {
@@ -20,6 +22,7 @@ interface FormState {
   weight_uom_id: string;
   buying_currency_id: string;
   selling_currency_id: string;
+  vendor_id: string;
 }
 
 const empty: FormState = {
@@ -33,6 +36,7 @@ const empty: FormState = {
   weight_uom_id: '',
   buying_currency_id: '',
   selling_currency_id: '',
+  vendor_id: '',
 };
 
 const dec = (places: number) => new RegExp(`^\\d+(\\.\\d{1,${places}})?$`);
@@ -40,6 +44,14 @@ const dec = (places: number) => new RegExp(`^\\d+(\\.\\d{1,${places}})?$`);
 export function ProductModal({ product, onClose, onSubmit }: Props) {
   const { departments, baseUoms, weightUoms, currencies, loading: mdLoading } = useMasterData();
   const [form, setForm] = useState<FormState>(empty);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+
+  useEffect(() => {
+    vendorsService
+      .list({ limit: 200 })
+      .then((res) => setVendors(res.items))
+      .catch(() => setVendors([]));
+  }, []);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -57,6 +69,7 @@ export function ProductModal({ product, onClose, onSubmit }: Props) {
         weight_uom_id: product.weight_uom_id ?? '',
         buying_currency_id: product.buying_currency_id ?? '',
         selling_currency_id: product.selling_currency_id ?? '',
+        vendor_id: product.vendor_id ?? '',
       });
     } else {
       setForm(empty);
@@ -76,6 +89,7 @@ export function ProductModal({ product, onClose, onSubmit }: Props) {
     if (!form.weight_uom_id) e.weight_uom_id = 'Required';
     if (!form.buying_currency_id) e.buying_currency_id = 'Required';
     if (!form.selling_currency_id) e.selling_currency_id = 'Required';
+    if (!form.vendor_id) e.vendor_id = 'Required';
     if (!dec(3).test(form.baseQty)) e.baseQty = 'Up to 3 decimals';
     if (!dec(3).test(form.weight)) e.weight = 'Up to 3 decimals';
     if (!dec(2).test(form.buyingPrice)) e.buyingPrice = 'Up to 2 decimals';
@@ -97,6 +111,7 @@ export function ProductModal({ product, onClose, onSubmit }: Props) {
         weight_uom_id: form.weight_uom_id,
         buying_currency_id: form.buying_currency_id,
         selling_currency_id: form.selling_currency_id,
+        vendor_id: form.vendor_id,
         baseQty: Number(form.baseQty),
         weight: Number(form.weight),
         buyingPrice: Number(form.buyingPrice),
@@ -114,7 +129,7 @@ export function ProductModal({ product, onClose, onSubmit }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4"
+      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-ink/50 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <form
@@ -189,6 +204,22 @@ export function ProductModal({ product, onClose, onSubmit }: Props) {
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.code} — {d.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          {/* Vendor / supplier — full width */}
+          <Field label="Vendor (supplier) *" error={errors.vendor_id}>
+            <select
+              className="input"
+              value={form.vendor_id}
+              onChange={(e) => set('vendor_id', e.target.value)}
+            >
+              <option value="">Select Vendor</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.code} — {v.legal_name}
                 </option>
               ))}
             </select>
@@ -346,23 +377,11 @@ function Field({
   );
 }
 
-function BarcodePanel({ value, code }: { value: string; code: string }) {
+function BarcodePanel({ value, code: _code }: { value: string; code: string }) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const getSvg = (): SVGSVGElement | null =>
     wrapRef.current?.querySelector('svg') ?? null;
-
-  const handlePrint = () => {
-    const svg = getSvg();
-    if (!svg) return;
-    const markup = new XMLSerializer().serializeToString(svg);
-    const win = window.open('', '_blank', 'width=480,height=360');
-    if (!win) return;
-    win.document.write(
-      `<html><head><title>Barcode ${code}</title></head><body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;"><div style="text-align:center"><div style="font-size:14px;margin-bottom:8px">${code}</div>${markup}</div><script>window.onload=()=>{window.print();setTimeout(()=>window.close(),300);}</script></body></html>`,
-    );
-    win.document.close();
-  };
 
   const handleDownloadSvg = () => {
     const svg = getSvg();
@@ -404,9 +423,6 @@ function BarcodePanel({ value, code }: { value: string; code: string }) {
         <ProductBarcode value={value} height={100} width={2.4} fontSize={16} />
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <button type="button" className="btn-ghost !py-1 !px-3 text-xs" onClick={handlePrint}>
-          Print
-        </button>
         <button type="button" className="btn-ghost !py-1 !px-3 text-xs" onClick={handleDownloadSvg}>
           Download SVG
         </button>

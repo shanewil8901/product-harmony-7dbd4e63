@@ -1,6 +1,7 @@
 import { api, getToken } from './api';
 import type {
   AttendanceDayState,
+  AttendanceReport,
   AttendanceRow,
   AttendanceSummary,
   BulkPayslipPayload,
@@ -50,6 +51,35 @@ export const employeesService = {
     return data;
   },
 
+  /** Optional passport-size photo. Returns an object URL, or null when unset. */
+  async photoUrl(id: string): Promise<string | null> {
+    const res = await fetch(`${api.defaults.baseURL}/employees/${id}/photo`, {
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+    });
+    if (res.status === 204 || !res.ok) return null;
+    const blob = await res.blob();
+    if (blob.size === 0) return null;
+    return URL.createObjectURL(blob);
+  },
+  async myPhotoUrl(): Promise<string | null> {
+    const res = await fetch(`${api.defaults.baseURL}/employees/me/photo`, {
+      headers: { Authorization: `Bearer ${getToken() ?? ''}` },
+    });
+    if (res.status === 204 || !res.ok) return null;
+    const blob = await res.blob();
+    if (blob.size === 0) return null;
+    return URL.createObjectURL(blob);
+  },
+  async uploadPhoto(id: string, file: File) {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await api.post<EmployeeDocument>(`/employees/${id}/photo`, form);
+    return data;
+  },
+  async deletePhoto(id: string) {
+    await api.delete(`/employees/${id}/photo`);
+  },
+
   async documents(id: string) {
     const { data } = await api.get<EmployeeDocument[]>(`/employees/${id}/documents`);
     return data;
@@ -64,7 +94,7 @@ export const employeesService = {
   async deleteDocument(id: string, docId: string) {
     await api.delete(`/employees/${id}/documents/${docId}`);
   },
-  /** Streams the file through an authenticated fetch, then opens it locally. */
+  /** Streams the file through an authenticated fetch, then saves it locally. */
   async openDocument(id: string, doc: EmployeeDocument) {
     const res = await fetch(
       `${api.defaults.baseURL}/employees/${id}/documents/${doc.id}/file`,
@@ -73,7 +103,12 @@ export const employeesService = {
     if (!res.ok) throw new Error('Could not download that document');
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc.file_name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   },
 };
@@ -84,6 +119,11 @@ export const attendanceService = {
       '/attendance',
       { params },
     );
+    return data;
+  },
+  /** Aggregated per-employee report for a date span. */
+  async report(params: { from: string; to: string; employee_id?: string }) {
+    const { data } = await api.get<AttendanceReport>('/attendance/report', { params });
     return data;
   },
   async upsert(payload: UpsertAttendancePayload) {

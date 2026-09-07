@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: erp-backend
+  labels:
+    app: erp-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: erp-backend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+---
+# Alias service so the frontend nginx upstream (`backend:3000`) resolves
+# identically in Docker Compose and Kubernetes.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app: erp-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: erp-backend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP

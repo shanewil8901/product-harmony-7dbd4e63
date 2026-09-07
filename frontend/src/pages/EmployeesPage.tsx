@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { employeesService } from '../services/hr.service';
 import { masterDataService } from '../services/masterData.service';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from '../lib/toast';
-import { EMAIL_RE, HELP, KSA } from '../lib/validators';
+import { EMAIL_RE, HELP, KSA, isKsaMobileLocal, MOBILE_HELP, toLocalMobile } from '../lib/validators';
 import { notifyApiError, type ApiError } from '../services/api';
 import type { Currency, Department, Role, RoleCode } from '../types/product';
 import {
@@ -89,6 +90,9 @@ function Field({
 export function EmployeesPage() {
   const { canManageUsers, isAdmin, isManager } = usePermissions();
   const canEdit = isAdmin || isManager;
+  const { user, logout } = useAuth();
+  /** First run: the temporary account may only create the real admin. */
+  const setupMode = !!user?.is_bootstrap;
 
   const [rows, setRows] = useState<Employee[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -109,6 +113,32 @@ export function EmployeesPage() {
   const [docs, setDocs] = useState<EmployeeDocument[]>([]);
   const [docType, setDocType] = useState<EmployeeDocType>('iqama');
   const [uploading, setUploading] = useState(false);
+
+  // Optional passport-size profile photo (max 5 MB) — never required to save.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const resetPhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoError(null);
+  };
+
+  const pickPhoto = (file: File | null) => {
+    if (!file) return resetPhoto();
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPhotoError('Use a JPG, PNG or WEBP image');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('The photo must be 5 MB or smaller');
+      return;
+    }
+    setPhotoError(null);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
 
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailNotice, setEmailNotice] = useState<{ taken: boolean; message: string } | null>(null);
@@ -201,6 +231,12 @@ export function EmployeesPage() {
         notifyApiError(e, 'Could not load master data');
       }
       await load();
+      if (setupMode) {
+        setEditing(null);
+        setErrors({});
+        setForm({ ...EMPTY, role: 'admin' });
+        setModalOpen(true);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManageUsers]);
@@ -226,8 +262,13 @@ export function EmployeesPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ ...EMPTY, salary_currency_id: currencies[0]?.id ?? '' });
+    setForm({
+      ...EMPTY,
+      salary_currency_id: currencies[0]?.id ?? '',
+      role: setupMode ? 'admin' : EMPTY.role,
+    });
     setErrors({});
+    resetPhoto();
     setModalOpen(true);
   };
 
@@ -245,9 +286,9 @@ export function EmployeesPage() {
       iqama_expiry: e.iqama_expiry ?? '',
       nationality: e.nationality ?? '',
       date_of_birth: e.date_of_birth ?? '',
-      mobile: e.mobile,
+      mobile: toLocalMobile(e.mobile),
       emergency_contact_name: e.emergency_contact_name ?? '',
-      emergency_contact_phone: e.emergency_contact_phone ?? '',
+      emergency_contact_phone: toLocalMobile(e.emergency_contact_phone),
       address_line1: e.address_line1,
       address_city: e.address_city,
       address_postal_code: e.address_postal_code ?? '',
@@ -266,6 +307,8 @@ export function EmployeesPage() {
       salary_currency_id: e.salary_currency_id ?? '',
       notes: e.notes ?? '',
     });
+    resetPhoto();
+    void employeesService.photoUrl(e.id).then(setPhotoPreview).catch(() => undefined);
     setModalOpen(true);
   };
 
@@ -289,9 +332,9 @@ export function EmployeesPage() {
     req('first_name');
     req('last_name');
     if (!KSA.NATIONAL_ID.test(form.iqama_number)) e.iqama_number = HELP.NATIONAL_ID;
-    if (!KSA.PHONE.test(form.mobile)) e.mobile = HELP.PHONE;
-    if (form.emergency_contact_phone && !KSA.PHONE.test(form.emergency_contact_phone))
-      e.emergency_contact_phone = HELP.PHONE;
+    if (!isKsaMobileLocal(form.mobile)) e.mobile = MOBILE_HELP;
+    if (form.emergency_contact_phone && !isKsaMobileLocal(form.emergency_contact_phone))
+      e.emergency_contact_phone = MOBILE_HELP;
     req('address_line1');
     req('address_city');
     if (form.address_postal_code && !KSA.POSTAL.test(form.address_postal_code))
@@ -355,21 +398,38 @@ export function EmployeesPage() {
         notes: str(form.notes),
       };
 
+      let savedId: string;
       if (editing) {
         await employeesService.update(editing.id, {
           ...base,
           role: form.role as RoleCode,
           password: form.password || undefined,
         });
+        savedId = editing.id;
         toast('success', 'Employee updated');
       } else {
-        await employeesService.create({
+        const created = await employeesService.create({
           ...base,
           email: form.email.trim(),
           password: form.password,
           role: form.role as RoleCode,
         });
+        savedId = created.id;
         toast('success', 'Employee created');
+        if (setupMode) {
+          toast('success', 'Admin created. Sign in with the new admin account.');
+          setModalOpen(false);
+          logout();
+          return;
+        }
+      }
+
+      if (photoFile) {
+        try {
+          await employeesService.uploadPhoto(savedId, photoFile);
+        } catch (photoErr) {
+          notifyApiError(photoErr as ApiError, 'Employee saved, but the photo could not be uploaded');
+        }
       }
       setModalOpen(false);
       await load();
@@ -420,6 +480,23 @@ export function EmployeesPage() {
 
   return (
     <div className="space-y-6">
+      {setupMode ? (
+        <div
+          role="note"
+          className="card border border-gold-400/40 bg-paper-warm p-6 text-sm text-ink-muted"
+        >
+          <h1 className="font-serif text-2xl text-ink">Set up your administrator</h1>
+          <p className="mt-2">
+            You are signed in with the temporary account. Create the real administrator employee to
+            finish setup — the rest of the application stays locked until then. The temporary
+            account is deleted automatically once the admin exists.
+          </p>
+          <button className="btn-primary mt-4" onClick={openCreate}>
+            Create administrator
+          </button>
+        </div>
+      ) : (
+      <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-serif text-2xl text-ink">Employees</h1>
@@ -494,7 +571,7 @@ export function EmployeesPage() {
                     <td className="px-4 py-3 text-ink-muted">{e.job_title}</td>
                     <td className="px-4 py-3 text-ink-muted">{e.department_name ?? '—'}</td>
                     <td className="px-4 py-3 text-ink-muted">{e.role?.name ?? '—'}</td>
-                    <td className="px-4 py-3 text-ink-muted whitespace-nowrap">{e.mobile}</td>
+                    <td className="px-4 py-3 text-ink-muted whitespace-nowrap">{toLocalMobile(e.mobile)}</td>
                     <td className="px-4 py-3 text-ink whitespace-nowrap">
                       {e.salary_currency_code ?? ''} {e.gross_salary}
                     </td>
@@ -529,8 +606,11 @@ export function EmployeesPage() {
         </div>
       )}
 
+      </>
+      )}
+
       {modalOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-ink/40 p-4">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-ink/50 p-4 backdrop-blur-sm">
           <form
             onSubmit={onSubmit}
             className="card my-6 w-full max-w-3xl p-5 sm:p-6 space-y-5"
@@ -544,6 +624,48 @@ export function EmployeesPage() {
                 Close
               </button>
             </div>
+
+            <section className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-brown-500">
+                Profile photo <span className="normal-case tracking-normal">(optional)</span>
+              </h3>
+              <div className="flex items-start gap-4">
+                <div className="w-24 shrink-0 overflow-hidden rounded-lg border-2 border-gold-300 bg-paper-warm">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Profile preview"
+                      className="h-full w-full object-cover"
+                      style={{ aspectRatio: '35 / 45' }}
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center text-center text-[10px] text-brown-400"
+                      style={{ aspectRatio: '35 / 45' }}
+                    >
+                      No photo
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="input !py-1.5"
+                    onChange={(ev) => pickPhoto(ev.target.files?.[0] ?? null)}
+                  />
+                  <p className="text-xs text-brown-500">
+                    Passport-size photo preferred (35 × 45 mm ratio). JPG, PNG or WEBP, max 5 MB.
+                  </p>
+                  {photoError && <p className="text-xs text-brick-500">{photoError}</p>}
+                  {photoPreview && (
+                    <button type="button" className="btn-ghost !py-1 !px-3 text-xs" onClick={resetPhoto}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
 
             <section className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-brown-500">
@@ -590,10 +712,16 @@ export function EmployeesPage() {
                     onChange={(e) => set('password', e.target.value)}
                   />
                 </Field>
-                <Field label="Role" required error={errors.role}>
+                <Field
+                  label="Role"
+                  required
+                  error={errors.role}
+                  help={setupMode ? 'The first account must be an administrator.' : undefined}
+                >
                   <select
                     className="input"
                     value={form.role}
+                    disabled={setupMode}
                     onChange={(e) => set('role', e.target.value)}
                   >
                     {roles.map((r) => (
@@ -660,11 +788,14 @@ export function EmployeesPage() {
                     onChange={(e) => set('date_of_birth', e.target.value)}
                   />
                 </Field>
-                <Field label="Mobile" required error={errors.mobile} help={HELP.PHONE}>
+                <Field label="Mobile" required error={errors.mobile} help={MOBILE_HELP}>
                   <input
                     className="input"
                     value={form.mobile}
-                    onChange={(e) => set('mobile', e.target.value)}
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="0501234567"
+                    onChange={(e) => set('mobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
                   />
                 </Field>
                 <Field label="Emergency contact" error={errors.emergency_contact_name}>
@@ -677,12 +808,17 @@ export function EmployeesPage() {
                 <Field
                   label="Emergency phone"
                   error={errors.emergency_contact_phone}
-                  help={HELP.PHONE}
+                  help={MOBILE_HELP}
                 >
                   <input
                     className="input"
                     value={form.emergency_contact_phone}
-                    onChange={(e) => set('emergency_contact_phone', e.target.value)}
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="0501234567"
+                    onChange={(e) =>
+                      set('emergency_contact_phone', e.target.value.replace(/\D/g, '').slice(0, 10))
+                    }
                   />
                 </Field>
                 <Field label="Address" required error={errors.address_line1}>
@@ -873,7 +1009,7 @@ export function EmployeesPage() {
       )}
 
       {docsFor && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-ink/40 p-4">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-ink/50 p-4 backdrop-blur-sm">
           <div className="card my-6 w-full max-w-2xl p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-serif text-xl text-ink">Documents — {docsFor.full_name}</h2>

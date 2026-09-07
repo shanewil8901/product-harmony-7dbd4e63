@@ -1,0 +1,110 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+backend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/your-org/erp-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 3000
+  healthPath: /api/v1/health
+  livenessPath: /api/v1/health/live
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/your-org/erp-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+mysql:
+  enabled: true
+  image: mysql:8.0
+  database: product_management
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  persistence:
+    size: 20Gi
+    storageClass: ""
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Non-sensitive environment (rendered into a ConfigMap)
+config:
+  PORT: "3000"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_DATABASE: "product_management"
+  # "true" lets the backend create/patch its own tables on boot. A fresh MySQL
+  # volume has no schema, so "false" here makes the API crash with
+  # ER_NO_SUCH_TABLE. Flip to "false" only after the schema is stable and you
+  # manage changes with SQL migrations.
+  DB_SYNC: "true"
+  JWT_EXPIRES_IN: "10m"
+  KSA_COMPANY_PREFIX: "6281234"
+  MAX_UPLOAD_MB: "10"
+  PUBLIC_API_URL: "https://erp.example.com"
+  API_PREFIX: "api/v1"
+  CORS_ORIGIN: "https://erp.example.com"
+  QUEUE_ENABLED: "true"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  QUEUE_PREFIX: "erp"
+
+# Sensitive environment (rendered into a Secret). Override with --set or a
+# SealedSecret / External Secret in production.
+secrets:
+  DB_USERNAME: root
+  DB_PASSWORD: change-me
+  MYSQL_ROOT_PASSWORD: change-me
+  JWT_SECRET: change-me-in-production
+  REDIS_PASSWORD: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  host: erp.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+  tls:
+    enabled: true
+    secretName: erp-tls
