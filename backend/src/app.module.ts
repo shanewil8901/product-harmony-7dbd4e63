@@ -11,12 +11,19 @@ import { VendorsModule } from './vendors/vendors.module';
 import { CustomersModule } from './customers/customers.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HrModule } from './hr/hr.module';
+import { SalesModule } from './sales/sales.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { HealthModule } from './health/health.module';
+import { QueueModule } from './queue/queue.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BackupModule } from './backup/backup.module';
 
 
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -44,6 +51,11 @@ import { HrModule } from './hr/hr.module';
     CustomersModule,
     DashboardModule,
     HrModule,
+    SalesModule,
+    InventoryModule,
+    HealthModule,
+    BackupModule,
+    QueueModule.register(),
   ],
 })
 export class AppModule {}

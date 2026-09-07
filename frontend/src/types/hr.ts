@@ -182,6 +182,57 @@ export interface AttendanceSummary {
   total_overtime: string;
 }
 
+/** One aggregated row of the attendance report (per employee, per date span). */
+export interface AttendanceReportRow {
+  employee_id: string;
+  employee_code: string;
+  employee_name: string;
+  job_title: string;
+  department_name: string | null;
+  employment_status: EmploymentStatus;
+  join_date: string;
+  scheduled_days: number;
+  records: number;
+  days_worked: number;
+  present_days: number;
+  late_days: number;
+  half_days: number;
+  absent_days: number;
+  leave_days: number;
+  paid_leave_days: number;
+  sick_leave_days: number;
+  holiday_days: number;
+  total_hours: string;
+  overtime_hours: string;
+  avg_hours_per_day: string;
+  attendance_rate: number;
+  punctuality_rate: number;
+  first_record: string | null;
+  last_record: string | null;
+}
+
+export interface AttendanceReportSummary {
+  from: string;
+  to: string;
+  employees: number;
+  days_worked: number;
+  absent_days: number;
+  leave_days: number;
+  total_hours: string;
+  overtime_hours: string;
+  avg_hours_per_day: string;
+  attendance_rate: number;
+}
+
+export interface AttendanceReport {
+  from: string;
+  to: string;
+  items: AttendanceReportRow[];
+  summary: AttendanceReportSummary;
+}
+
+
+
 export interface UpsertAttendancePayload {
   employee_id: string;
   work_date: string;

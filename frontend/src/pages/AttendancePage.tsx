@@ -262,8 +262,23 @@ export function AttendancePage() {
           clearLabel="All employees"
           placeholder="Filter by employee…"
         />
-        <input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <input
+          className="input"
+          type="date"
+          value={from}
+          max={to || undefined}
+          onChange={(e) => {
+            setFrom(e.target.value);
+            if (to && e.target.value && to < e.target.value) setTo(e.target.value);
+          }}
+        />
+        <input
+          className="input"
+          type="date"
+          value={to}
+          min={from || undefined}
+          onChange={(e) => setTo(e.target.value)}
+        />
         <button className="btn-ghost" onClick={() => void load()}>
           Apply
         </button>

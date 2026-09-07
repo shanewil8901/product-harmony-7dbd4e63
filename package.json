@@ -1,15 +1,14 @@
 {
-  "name": "erp-monorepo",
+  "name": "product-management",
   "private": true,
   "version": "1.0.0",
-  "description": "Monorepo: frontend (React + Vite) and backend (NestJS + TypeORM).",
+  "type": "module",
   "scripts": {
-    "postinstall": "cd frontend && npm install --no-audit --no-fund",
-    "dev": "cd frontend && npm run dev",
-    "build:dev": "cd frontend && npm run build",
+    "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "typecheck": "cd frontend && npm run typecheck && cd ../backend && npm run typecheck",
+    "dev": "cd frontend && npm run dev -- --host 0.0.0.0 --port 8080",
     "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview",
-    "backend:dev": "cd backend && npm run start:dev",
-    "backend:build": "cd backend && npm run build"
+    "build:dev": "cd frontend && npm run build:dev",
+    "preview": "cd frontend && npm run preview"
   }
 }
