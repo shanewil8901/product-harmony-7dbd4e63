@@ -11,6 +11,7 @@ import { VendorsPage } from './pages/VendorsPage';
 import { SalesPage } from './pages/SalesPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { EmployeesPage } from './pages/EmployeesPage';
+import { EmployeeViewPage } from './pages/EmployeeViewPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { AttendanceReportPage } from './pages/AttendanceReportPage';
 import { SelfAttendancePage } from './pages/SelfAttendancePage';
@@ -144,6 +145,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allow={['admin', 'manager']}>
             <EmployeesPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'employees/:id',
+        element: (
+          <RoleRoute allow={['admin', 'manager', 'supervisor']}>
+            <EmployeeViewPage />
           </RoleRoute>
         ),
       },
