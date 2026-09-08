@@ -581,6 +581,12 @@ export function EmployeesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        className="btn-ghost !py-1 !px-2 text-xs"
+                        onClick={() => navigate(`/employees/${e.id}`)}
+                      >
+                        View
+                      </button>{' '}
                       <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => openEdit(e)}>
                         Edit
                       </button>{' '}
