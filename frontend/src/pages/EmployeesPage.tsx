@@ -92,6 +92,7 @@ export function EmployeesPage() {
   const { canManageUsers, isAdmin, isManager } = usePermissions();
   const canEdit = isAdmin || isManager;
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   /** First run: the temporary account may only create the real admin. */
   const setupMode = !!user?.is_bootstrap;
 
