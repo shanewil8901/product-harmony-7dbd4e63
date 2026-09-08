@@ -42,6 +42,11 @@ export const employeesService = {
     const { data } = await api.get<EmployeeSelfOverview>('/employees/me/overview');
     return data;
   },
+  /** Same read-only dashboard for any employee (admin / manager / supervisor). */
+  async overview(id: string) {
+    const { data } = await api.get<EmployeeSelfOverview>(`/employees/${id}/overview`);
+    return data;
+  },
   async create(payload: CreateEmployeePayload) {
     const { data } = await api.post<Employee>('/employees', payload);
     return data;

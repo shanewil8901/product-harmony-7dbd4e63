@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { employeesService } from '../services/hr.service';
 import { masterDataService } from '../services/masterData.service';
 import { usePermissions } from '../hooks/usePermissions';
@@ -91,6 +92,7 @@ export function EmployeesPage() {
   const { canManageUsers, isAdmin, isManager } = usePermissions();
   const canEdit = isAdmin || isManager;
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   /** First run: the temporary account may only create the real admin. */
   const setupMode = !!user?.is_bootstrap;
 
@@ -581,6 +583,12 @@ export function EmployeesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        className="btn-ghost !py-1 !px-2 text-xs"
+                        onClick={() => navigate(`/employees/${e.id}`)}
+                      >
+                        View
+                      </button>{' '}
                       <button className="btn-ghost !py-1 !px-2 text-xs" onClick={() => openEdit(e)}>
                         Edit
                       </button>{' '}

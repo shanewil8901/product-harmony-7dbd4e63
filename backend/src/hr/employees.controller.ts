@@ -85,8 +85,9 @@ export class EmployeesController {
     createReadStream(photo.storage_path).pipe(res);
   }
 
-  /** Read-only HR dashboard for one employee (admin / manager). */
+  /** Read-only HR dashboard for one employee (admin / manager / supervisor). */
   @Get(':id/overview')
+  @Roles('admin', 'manager', 'supervisor')
   overview(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.service.employeeOverview(id);
   }
