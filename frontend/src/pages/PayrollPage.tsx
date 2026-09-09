@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { employeesService, payrollService } from '../services/hr.service';
 import { Combobox } from '../components/Combobox';
+import { Modal } from '../components/Dialog';
 import { BulkPayrollForm } from '../components/BulkPayrollForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
@@ -442,6 +443,54 @@ export function PayrollPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {cancelling && (
+        <Modal
+          title="Cancel payslip"
+          subtitle={`${cancelling.employee_name ?? ''} · ${cancelling.period}`}
+          onClose={() => setCancelling(null)}
+          footer={
+            <>
+              <button
+                className="btn-ghost"
+                onClick={() => setCancelling(null)}
+                disabled={cancelSaving}
+              >
+                Keep payslip
+              </button>
+              <button
+                className="btn-ghost text-red-600"
+                onClick={() => void confirmCancel()}
+                disabled={cancelSaving}
+              >
+                {cancelSaving ? 'Cancelling…' : 'Cancel payslip'}
+              </button>
+            </>
+          }
+        >
+          <label className="label">Reason for cancellation</label>
+          <textarea
+            autoFocus
+            rows={3}
+            className="input"
+            value={cancelReason}
+            placeholder="e.g. Duplicate run for this month"
+            onChange={(e) => {
+              setCancelReason(e.target.value);
+              setCancelError(null);
+            }}
+          />
+          {cancelError ? (
+            <p className="mt-1 text-xs text-brown-600" role="alert">
+              {cancelError}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-brown-400">
+              The reason is stored with the payslip for audit.
+            </p>
+          )}
+        </Modal>
       )}
     </div>
   );
