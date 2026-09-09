@@ -147,6 +147,13 @@ export function PayrollPage() {
   };
 
   const changeStatus = async (p: Payslip, status: PayslipStatus) => {
+    // Cancelling always needs a written reason — ask before calling the API.
+    if (status === 'cancelled') {
+      setCancelling(p);
+      setCancelReason('');
+      setCancelError(null);
+      return;
+    }
     try {
       await payrollService.setStatus(p.id, status);
       toast('success', `Payslip ${PAYSLIP_STATUS_LABEL[status].toLowerCase()}`);
@@ -156,10 +163,29 @@ export function PayrollPage() {
     }
   };
 
+  const confirmCancel = async () => {
+    if (!cancelling) return;
+    if (!cancelReason.trim()) {
+      setCancelError('Enter why this payslip is being cancelled');
+      return;
+    }
+    setCancelSaving(true);
+    try {
+      await payrollService.setStatus(cancelling.id, 'cancelled', cancelReason.trim());
+      toast('success', 'Payslip cancelled');
+      setCancelling(null);
+      await load();
+    } catch (err) {
+      notifyApiError(err, 'Could not cancel payslip');
+    } finally {
+      setCancelSaving(false);
+    }
+  };
+
   const remove = async (p: Payslip) => {
     try {
       await payrollService.remove(p.id);
-      toast('success', 'Payslip deleted');
+      toast('success', 'Payslip removed');
       await load();
     } catch (err) {
       notifyApiError(err, 'Could not delete payslip');
