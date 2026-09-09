@@ -278,6 +278,7 @@ export interface Payslip {
   overtime_hours: string;
   status: PayslipStatus;
   paid_at: string | null;
+  cancel_reason?: string | null;
   notes: string | null;
   created_at: string;
 }

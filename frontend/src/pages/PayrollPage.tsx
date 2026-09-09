@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { employeesService, payrollService } from '../services/hr.service';
 import { Combobox } from '../components/Combobox';
+import { Modal } from '../components/Dialog';
 import { BulkPayrollForm } from '../components/BulkPayrollForm';
 import { usePermissions } from '../hooks/usePermissions';
 import { toast } from '../lib/toast';
@@ -48,6 +49,13 @@ export function PayrollPage() {
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+
+  /** Cancellation dialog — a reason is mandatory before the payslip is voided. */
+  const [cancelling, setCancelling] = useState<Payslip | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSaving, setCancelSaving] = useState(false);
+
 
   const load = async () => {
     setLoading(true);
@@ -147,6 +155,13 @@ export function PayrollPage() {
   };
 
   const changeStatus = async (p: Payslip, status: PayslipStatus) => {
+    // Cancelling always needs a written reason — ask before calling the API.
+    if (status === 'cancelled') {
+      setCancelling(p);
+      setCancelReason('');
+      setCancelError(null);
+      return;
+    }
     try {
       await payrollService.setStatus(p.id, status);
       toast('success', `Payslip ${PAYSLIP_STATUS_LABEL[status].toLowerCase()}`);
@@ -156,10 +171,29 @@ export function PayrollPage() {
     }
   };
 
+  const confirmCancel = async () => {
+    if (!cancelling) return;
+    if (!cancelReason.trim()) {
+      setCancelError('Enter why this payslip is being cancelled');
+      return;
+    }
+    setCancelSaving(true);
+    try {
+      await payrollService.setStatus(cancelling.id, 'cancelled', cancelReason.trim());
+      toast('success', 'Payslip cancelled');
+      setCancelling(null);
+      await load();
+    } catch (err) {
+      notifyApiError(err, 'Could not cancel payslip');
+    } finally {
+      setCancelSaving(false);
+    }
+  };
+
   const remove = async (p: Payslip) => {
     try {
       await payrollService.remove(p.id);
-      toast('success', 'Payslip deleted');
+      toast('success', 'Payslip removed');
       await load();
     } catch (err) {
       notifyApiError(err, 'Could not delete payslip');
@@ -368,6 +402,11 @@ export function PayrollPage() {
                       <span className="inline-flex rounded-full bg-forest-50 px-2.5 py-0.5 text-xs font-medium text-forest-500">
                         {PAYSLIP_STATUS_LABEL[p.status]}
                       </span>
+                      {p.status === 'cancelled' && p.cancel_reason && (
+                        <div className="mt-1 max-w-[220px] text-xs text-brown-500">
+                          {p.cancel_reason}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {canEdit &&
@@ -380,7 +419,9 @@ export function PayrollPage() {
                             {PAYSLIP_STATUS_LABEL[s]}
                           </button>
                         ))}
-                      {isAdmin && p.status !== 'paid' && (
+                      {/* Approved and paid payslips are financial records — they can only
+                          be paid or cancelled, never removed. */}
+                      {isAdmin && (p.status === 'draft' || p.status === 'cancelled') && (
                         <button
                           className="btn-danger !py-1 !px-2 text-xs"
                           onClick={() => void remove(p)}
@@ -402,6 +443,54 @@ export function PayrollPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {cancelling && (
+        <Modal
+          title="Cancel payslip"
+          subtitle={`${cancelling.employee_name ?? ''} · ${cancelling.period}`}
+          onClose={() => setCancelling(null)}
+          footer={
+            <>
+              <button
+                className="btn-ghost"
+                onClick={() => setCancelling(null)}
+                disabled={cancelSaving}
+              >
+                Keep payslip
+              </button>
+              <button
+                className="btn-ghost text-red-600"
+                onClick={() => void confirmCancel()}
+                disabled={cancelSaving}
+              >
+                {cancelSaving ? 'Cancelling…' : 'Cancel payslip'}
+              </button>
+            </>
+          }
+        >
+          <label className="label">Reason for cancellation</label>
+          <textarea
+            autoFocus
+            rows={3}
+            className="input"
+            value={cancelReason}
+            placeholder="e.g. Duplicate run for this month"
+            onChange={(e) => {
+              setCancelReason(e.target.value);
+              setCancelError(null);
+            }}
+          />
+          {cancelError ? (
+            <p className="mt-1 text-xs text-brown-600" role="alert">
+              {cancelError}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-brown-400">
+              The reason is stored with the payslip for audit.
+            </p>
+          )}
+        </Modal>
       )}
     </div>
   );

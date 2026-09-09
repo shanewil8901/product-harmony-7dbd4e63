@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "install:all": "cd frontend && npm install && cd ../backend && npm install",
+    "postinstall": "cd frontend && (test -d node_modules || npm install --no-audit --no-fund)",
     "typecheck": "cd frontend && npm run typecheck && cd ../backend && npm run typecheck",
-    "dev": "cd frontend && npm run dev -- --host 0.0.0.0 --port 8080",
-    "build": "cd frontend && npm run build",
-    "build:dev": "cd frontend && npm run build:dev",
+    "dev": "cd frontend && (test -d node_modules || npm install --no-audit --no-fund) && npm run dev -- --host 0.0.0.0 --port 8080",
+    "build": "cd frontend && (test -d node_modules || npm install --no-audit --no-fund) && npm run build",
+    "build:dev": "cd frontend && (test -d node_modules || npm install --no-audit --no-fund) && npm run build:dev",
     "preview": "cd frontend && npm run preview"
   }
 }
