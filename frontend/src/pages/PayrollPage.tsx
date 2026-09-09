@@ -49,6 +49,13 @@ export function PayrollPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
+  /** Cancellation dialog — a reason is mandatory before the payslip is voided. */
+  const [cancelling, setCancelling] = useState<Payslip | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelSaving, setCancelSaving] = useState(false);
+
+
   const load = async () => {
     setLoading(true);
     setLoadError(null);
