@@ -157,8 +157,12 @@ export const payrollService = {
     return data;
   },
 
-  async setStatus(id: string, status: PayslipStatus) {
-    const { data } = await api.patch<Payslip>(`/payroll/payslips/${id}/status`, { status });
+  /** Cancelling requires a reason; the backend rejects an empty one. */
+  async setStatus(id: string, status: PayslipStatus, cancelReason?: string) {
+    const { data } = await api.patch<Payslip>(`/payroll/payslips/${id}/status`, {
+      status,
+      ...(cancelReason ? { cancel_reason: cancelReason } : {}),
+    });
     return data;
   },
   async remove(id: string) {
