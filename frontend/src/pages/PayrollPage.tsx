@@ -401,6 +401,11 @@ export function PayrollPage() {
                       <span className="inline-flex rounded-full bg-forest-50 px-2.5 py-0.5 text-xs font-medium text-forest-500">
                         {PAYSLIP_STATUS_LABEL[p.status]}
                       </span>
+                      {p.status === 'cancelled' && p.cancel_reason && (
+                        <div className="mt-1 max-w-[220px] text-xs text-brown-500">
+                          {p.cancel_reason}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {canEdit &&
@@ -413,7 +418,9 @@ export function PayrollPage() {
                             {PAYSLIP_STATUS_LABEL[s]}
                           </button>
                         ))}
-                      {isAdmin && p.status !== 'paid' && (
+                      {/* Approved and paid payslips are financial records — they can only
+                          be paid or cancelled, never removed. */}
+                      {isAdmin && (p.status === 'draft' || p.status === 'cancelled') && (
                         <button
                           className="btn-danger !py-1 !px-2 text-xs"
                           onClick={() => void remove(p)}
