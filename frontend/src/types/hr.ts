@@ -318,6 +318,32 @@ export interface AttendanceDayState {
   check_in: string | null;
   check_out: string | null;
   worked_hours: string;
+  /** A re-entry for this day is waiting for a manager's decision. */
+  pending_approval?: boolean;
+  pending_requests?: { kind: 'in' | 'out'; time: string }[];
+  pending_kind?: 'in' | 'out';
+  pending_time?: string;
+}
+
+export type AttendanceRequestStatus = 'pending' | 'approved' | 'rejected';
+
+/** Attendance a person re-entered for a day that already had a time recorded. */
+export interface AttendanceRequestRow {
+  id: string;
+  employee_id: string;
+  employee_code: string | null;
+  employee_name: string | null;
+  work_date: string;
+  kind: 'in' | 'out';
+  requested_time: string;
+  current_time_value: string | null;
+  status: AttendanceRequestStatus;
+  requested_by: string | null;
+  decided_by: string | null;
+  decided_role: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+  created_at: string;
 }
 
 export interface PunchPayload {

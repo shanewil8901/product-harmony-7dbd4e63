@@ -57,15 +57,15 @@ export class AttendanceController {
     return this.service.punch(dto, req.user.id);
   }
 
-  /** Attendance re-entry requests awaiting approval (manager / admin). */
+  /** Attendance re-entry requests awaiting approval (admin / manager / supervisor). */
   @Get('requests')
-  @Roles('admin', 'manager')
+  @Roles('admin', 'manager', 'supervisor')
   requests(@Query('status') status?: string) {
     return this.service.listRequests(status ?? 'pending');
   }
 
   @Post('requests/:id/decision')
-  @Roles('admin', 'manager')
+  @Roles('admin', 'manager', 'supervisor')
   decide(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: DecideAttendanceRequestDto,
