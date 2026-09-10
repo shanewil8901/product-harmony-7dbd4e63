@@ -12,6 +12,7 @@ import {
   SALES_ORDER_STATUSES,
   SALES_PAYMENT_METHOD_LABEL,
   SALES_PAYMENT_STATE_LABEL,
+  SALES_PAYMENT_STATE_TONE,
   SALES_PAYMENT_STATUS_LABEL,
   SALES_PAYMENT_STATUS_TONE,
   SALES_STATUS_LABEL,
@@ -291,19 +292,14 @@ export function SalesPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  {o.payment_state !== "settled" ? (
-                    <span
-                      className={`inline-flex rounded-md border px-2.5 py-0.5 text-xs font-medium ${
-                        o.payment_state === "not_received"
-                          ? SALES_PAYMENT_STATUS_TONE.not_received
-                          : SALES_PAYMENT_STATUS_TONE.pending
-                      }`}
-                    >
-                      {SALES_PAYMENT_STATE_LABEL[o.payment_state]}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-brown-500">—</span>
-                  )}
+                  <span
+                    className={`inline-flex rounded-md border px-2.5 py-0.5 text-xs font-medium ${
+                      SALES_PAYMENT_STATE_TONE[o.payment_state] ??
+                      SALES_PAYMENT_STATUS_TONE.pending
+                    }`}
+                  >
+                    {SALES_PAYMENT_STATE_LABEL[o.payment_state] ?? o.payment_state}
+                  </span>
                   {o.credit_due_date && o.payment_state === "credit_pending" && (
                     <div className="font-mono text-[11px] text-brown-500">
                       due {o.credit_due_date}

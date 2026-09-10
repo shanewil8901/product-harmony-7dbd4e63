@@ -118,11 +118,25 @@ export interface SalesPaymentInput {
   note?: string;
 }
 
-export type SalesPaymentState = 'settled' | 'credit_pending' | 'not_received';
+export type SalesPaymentState =
+  | 'settled'
+  | 'partial'
+  | 'unpaid'
+  | 'credit_pending'
+  | 'not_received';
 export const SALES_PAYMENT_STATE_LABEL: Record<SalesPaymentState, string> = {
-  settled: 'Settled',
+  settled: 'Paid in full',
+  partial: 'Partially paid',
+  unpaid: 'Unpaid',
   credit_pending: 'Credit — pending payment',
   not_received: 'Not received',
+};
+export const SALES_PAYMENT_STATE_TONE: Record<SalesPaymentState, string> = {
+  settled: 'bg-forest-50 text-forest-500 border-forest-100',
+  partial: 'bg-gold-50 text-ink border-gold-200',
+  unpaid: 'bg-brown-50 text-brown-600 border-brown-200',
+  credit_pending: 'bg-gold-50 text-ink border-gold-200',
+  not_received: 'bg-red-50 text-red-600 border-red-200',
 };
 
 export interface SalesOrder {
