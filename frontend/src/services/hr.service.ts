@@ -2,6 +2,7 @@ import { api, getToken } from './api';
 import type {
   AttendanceDayState,
   AttendanceReport,
+  AttendanceRequestRow,
   AttendanceRow,
   AttendanceSummary,
   BulkPayslipPayload,
@@ -138,7 +139,26 @@ export const attendanceService = {
   async remove(id: string) {
     await api.delete(`/attendance/${id}`);
   },
+
+  /**
+   * Re-entered attendance waiting for a decision. Nothing in the attendance
+   * table changes until one of these is approved.
+   */
+  async listRequests(status: 'pending' | 'approved' | 'rejected' | 'all' = 'pending') {
+    const { data } = await api.get<AttendanceRequestRow[]>('/attendance/requests', {
+      params: { status },
+    });
+    return data;
+  },
+  async decideRequest(id: string, action: 'approve' | 'reject', note?: string) {
+    const { data } = await api.post<{ id: string; status: string }>(
+      `/attendance/requests/${id}/decision`,
+      { action, ...(note ? { note } : {}) },
+    );
+    return data;
+  },
 };
+
 
 export const payrollService = {
   async list(params: { period?: string; employee_id?: string; status?: string } = {}) {
