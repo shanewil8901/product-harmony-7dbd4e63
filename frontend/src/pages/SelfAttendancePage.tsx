@@ -93,7 +93,14 @@ export function SelfAttendancePage() {
       });
       setState(saved);
       setKind(saved.check_in && !saved.check_out ? 'out' : 'in');
-      toast('success', kind === 'in' ? 'Checked in' : 'Checked out');
+      // A second entry for a day that already has that time is never applied
+      // straight away — it waits for a manager's decision.
+      if (saved.pending_approval)
+        toast(
+          'success',
+          'Sent for approval — your recorded time stays as it is until a manager approves it',
+        );
+      else toast('success', kind === 'in' ? 'Checked in' : 'Checked out');
     } catch (e) {
       notifyApiError(e, 'Could not record attendance');
     } finally {
