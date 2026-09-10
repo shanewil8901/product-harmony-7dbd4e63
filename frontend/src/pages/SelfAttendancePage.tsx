@@ -93,7 +93,14 @@ export function SelfAttendancePage() {
       });
       setState(saved);
       setKind(saved.check_in && !saved.check_out ? 'out' : 'in');
-      toast('success', kind === 'in' ? 'Checked in' : 'Checked out');
+      // A second entry for a day that already has that time is never applied
+      // straight away — it waits for a manager's decision.
+      if (saved.pending_approval)
+        toast(
+          'success',
+          'Sent for approval — your recorded time stays as it is until a manager approves it',
+        );
+      else toast('success', kind === 'in' ? 'Checked in' : 'Checked out');
     } catch (e) {
       notifyApiError(e, 'Could not record attendance');
     } finally {
@@ -207,6 +214,17 @@ export function SelfAttendancePage() {
             </div>
           ) : (
             <p className="mt-2 text-sm text-brown-500">No attendance recorded for this day yet.</p>
+          )}
+          {state?.pending_approval && (
+            <div className="mt-3 rounded-xl bg-gold-50 p-3 text-sm text-gold-700">
+              A changed time for this day is waiting for approval
+              {state.pending_requests?.length
+                ? `: ${state.pending_requests
+                    .map((p) => `${p.kind === 'in' ? 'check in' : 'check out'} ${prettyTime(p.time)}`)
+                    .join(', ')}`
+                : ''}
+              . The times above stay as they are until a manager approves it.
+            </div>
           )}
         </div>
       )}

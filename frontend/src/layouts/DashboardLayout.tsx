@@ -102,6 +102,7 @@ export function DashboardLayout() {
               icon: IconUsers,
               items: [
                 { to: '/attendance/report', label: 'Attendance report', icon: IconClock },
+                { to: '/attendance/approvals', label: 'Attendance approvals', icon: IconClock },
                 { to: '/leave/approvals', label: 'Leave approvals', icon: IconCalendar },
                 { to: '/resignations', label: 'Resignations', icon: IconIdCard },
                 { to: '/leave/settings', label: 'Leave settings', icon: IconShield },
@@ -118,6 +119,7 @@ export function DashboardLayout() {
                 { to: '/employees', label: 'Employees', icon: IconIdCard },
                 { to: '/attendance', label: 'Attendance', icon: IconClock, end: true },
                 { to: '/attendance/report', label: 'Attendance report', icon: IconClock },
+                { to: '/attendance/approvals', label: 'Attendance approvals', icon: IconClock },
                 { to: '/leave/approvals', label: 'Leave approvals', icon: IconCalendar },
                 { to: '/resignations', label: 'Resignations', icon: IconIdCard },
                 { to: '/leave/settings', label: 'Leave settings', icon: IconShield },
