@@ -108,10 +108,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     else if (status === 400) code = 'BAD_REQUEST';
     else code = `HTTP_${status}`;
 
-    this.logger.error(
-      `${req.method} ${req.url} → ${status} ${code}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    // Expected business-rule rejections (4xx) are not server faults — log them
+    // as warnings without a stack trace so real failures stay visible.
+    if (status < 500) {
+      this.logger.warn(`${req.method} ${req.url} → ${status} ${code}: ${message}`);
+    } else {
+      this.logger.error(
+        `${req.method} ${req.url} → ${status} ${code}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    }
 
     res.status(status).json({
       success: false,
