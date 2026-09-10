@@ -14,6 +14,7 @@ import { EmployeesPage } from './pages/EmployeesPage';
 import { EmployeeViewPage } from './pages/EmployeeViewPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { AttendanceReportPage } from './pages/AttendanceReportPage';
+import { AttendanceApprovalsPage } from './pages/AttendanceApprovalsPage';
 import { SelfAttendancePage } from './pages/SelfAttendancePage';
 import { PayrollPage } from './pages/PayrollPage';
 import { MyProfilePage } from './pages/MyProfilePage';
@@ -153,6 +154,14 @@ export const router = createBrowserRouter([
         element: (
           <RoleRoute allow={['admin', 'manager', 'supervisor']}>
             <EmployeeViewPage />
+          </RoleRoute>
+        ),
+      },
+      {
+        path: 'attendance/approvals',
+        element: (
+          <RoleRoute allow={['admin', 'manager', 'supervisor']}>
+            <AttendanceApprovalsPage />
           </RoleRoute>
         ),
       },
