@@ -41,7 +41,7 @@ export class SalesService {
   /** Never leak raw ids to clients — every relation is flattened to codes/names. */
   private toDto(o: SalesOrder, payments: SalesPayment[] = []) {
     const outstanding = Number(o.total_amount) - Number(o.amount_paid);
-    const credit = this.creditSummary(payments);
+    const credit = this.creditSummary(o, payments);
     return {
       ...o,
       payments,
@@ -68,7 +68,7 @@ export class SalesService {
    * funds. Once the expected date passes without confirmation — or the credit
    * is cancelled — the order is flagged "Not received" / high priority.
    */
-  private creditSummary(payments: SalesPayment[]) {
+  private creditSummary(order: SalesOrder, payments: SalesPayment[]) {
     const today = new Date().toISOString().slice(0, 10);
     const credits = payments.filter((p) => p.method === 'credit');
     const overdue = credits.filter(
@@ -78,12 +78,18 @@ export class SalesService {
     const pending = credits.filter((p) => p.status === 'pending');
 
     const sum = (rows: SalesPayment[]) => rows.reduce((s, r) => s + Number(r.amount), 0);
-    const payment_state: 'settled' | 'credit_pending' | 'not_received' =
+    const total = Number(order.total_amount ?? 0);
+    const paid = Number(order.amount_paid ?? 0);
+    const payment_state: 'settled' | 'partial' | 'unpaid' | 'credit_pending' | 'not_received' =
       notReceived.length || overdue.length
         ? 'not_received'
         : pending.length
           ? 'credit_pending'
-          : 'settled';
+          : total > 0 && paid + 0.005 >= total
+            ? 'settled'
+            : paid > 0
+              ? 'partial'
+              : 'unpaid';
 
     return {
       payment_state,
