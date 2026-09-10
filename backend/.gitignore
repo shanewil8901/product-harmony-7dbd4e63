@@ -1,5 +1,7 @@
 node_modules
 dist
+backups
+uploads
 .env
 *.log
 uploads/
