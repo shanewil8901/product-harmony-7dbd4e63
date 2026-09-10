@@ -215,6 +215,17 @@ export function SelfAttendancePage() {
           ) : (
             <p className="mt-2 text-sm text-brown-500">No attendance recorded for this day yet.</p>
           )}
+          {state?.pending_approval && (
+            <div className="mt-3 rounded-xl bg-gold-50 p-3 text-sm text-gold-700">
+              A changed time for this day is waiting for approval
+              {state.pending_requests?.length
+                ? `: ${state.pending_requests
+                    .map((p) => `${p.kind === 'in' ? 'check in' : 'check out'} ${prettyTime(p.time)}`)
+                    .join(', ')}`
+                : ''}
+              . The times above stay as they are until a manager approves it.
+            </div>
+          )}
         </div>
       )}
     </div>
