@@ -15,6 +15,11 @@ export const backupService = {
     const { data } = await api.post<DbBackup>('/backups/run');
     return data;
   },
+  /** Zip every uploaded/generated document and log the archive. */
+  async runFiles() {
+    const { data } = await api.post<DbBackup>('/backups/run-files');
+    return data;
+  },
   async upload(id: string) {
     const { data } = await api.post<DbBackup>(`/backups/${id}/upload`);
     return data;
