@@ -133,7 +133,7 @@ export class BackupService {
     this.uploading = true;
     try {
       const [latest] = await this.repo.find({
-        where: { status: 'success', local_deleted: false },
+        where: { kind: 'database', status: 'success', local_deleted: false },
         order: { created_at: 'DESC' },
         take: 1,
       });
