@@ -141,7 +141,8 @@ export async function zipDirectories(
   await write(end);
 
   await new Promise<void>((res, rej) => {
-    stream.end((err?: Error | null) => (err ? rej(err) : res()));
+    stream.on('error', rej);
+    stream.end(() => res());
   });
 
   const stat = await fs.stat(targetPath);
