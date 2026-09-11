@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
+export type BackupKind = 'database' | 'files';
 export type BackupTrigger = 'scheduled' | 'manual';
 export type BackupStatus = 'success' | 'failed';
 export type DriveStatus = 'pending' | 'uploaded' | 'skipped' | 'failed';
@@ -21,6 +22,11 @@ export class DbBackup {
   @Column({ name: 'file_path', type: 'varchar', length: 512 })
   file_path!: string;
 
+  /** What was captured: the MySQL dump, or the uploaded/generated files. */
+  @Index()
+  @Column({ type: 'varchar', length: 16, default: 'database' })
+  kind!: BackupKind;
+
   @Index()
   @Column({ type: 'varchar', length: 16 })
   trigger!: BackupTrigger;
@@ -31,6 +37,7 @@ export class DbBackup {
   @Column({ name: 'size_bytes', type: 'bigint', default: 0 })
   size_bytes!: string;
 
+  /** Tables for a database dump, archived files for a files backup. */
   @Column({ name: 'table_count', type: 'int', default: 0 })
   table_count!: number;
 

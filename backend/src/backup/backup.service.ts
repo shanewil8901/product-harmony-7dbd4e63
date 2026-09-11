@@ -8,6 +8,7 @@ import { join, resolve } from 'path';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 import { DbBackup } from './backup.entity';
+import { zipDirectories } from './zip.util';
 import { GoogleDriveService } from './gdrive.service';
 
 interface Actor {
@@ -21,6 +22,7 @@ export class BackupService {
   /** Single-flight guard — a dump must never overlap with another dump. */
   private running = false;
   private uploading = false;
+  private filesRunning = false;
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -34,6 +36,15 @@ export class BackupService {
 
   private get dir(): string {
     return resolve(process.env.BACKUP_DIR ?? './backups');
+  }
+
+  /** Top-level folders under ./uploads that hold system files. */
+  private get uploadDirs() {
+    const root = resolve(process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads'));
+    return ['vendors', 'customers', 'stock', 'employees'].map((name) => ({
+      name,
+      path: join(root, name),
+    }));
   }
 
   private get retentionDays(): number {
@@ -53,8 +64,15 @@ export class BackupService {
     const [last] = await this.repo.find({ order: { created_at: 'DESC' }, take: 1 });
     const localFiles = await this.listLocalFiles();
     const totalBytes = localFiles.reduce((s, f) => s + f.size, 0);
+    const [lastFiles] = await this.repo.find({
+      where: { kind: 'files' },
+      order: { created_at: 'DESC' },
+      take: 1,
+    });
     return {
       local_dir: this.dir,
+      upload_dirs: this.uploadDirs.map((d) => d.path),
+      last_files_backup: lastFiles ?? null,
       local_files: localFiles.length,
       local_bytes: totalBytes,
       retention_days: this.retentionDays,
@@ -69,6 +87,11 @@ export class BackupService {
   /** Manual run — records the user's name in the file name and the log row. */
   async runManual(actor: Actor) {
     return this.run('manual', actor);
+  }
+
+  /** Manual files backup — zips every uploaded/generated document. */
+  async runFilesManual(actor: Actor) {
+    return this.runFiles('manual', actor);
   }
 
   /** Manual push of a stored backup to Google Drive. */
@@ -123,6 +146,18 @@ export class BackupService {
     }
   }
 
+  /** One files archive per day (03:15 server time by default). */
+  @Cron(process.env.BACKUP_FILES_CRON ?? '15 3 * * *', { name: 'files-backup' })
+  async scheduledFiles() {
+    if (process.env.BACKUP_ENABLED === 'false') return;
+    try {
+      const row = await this.runFiles('scheduled', null);
+      if (this.drive.configured && row.status === 'success') await this.uploadRow(row);
+    } catch (err) {
+      this.logger.error(`Scheduled files backup failed: ${(err as Error).message}`);
+    }
+  }
+
   /** Nightly sweep of local files older than the retention window. */
   @Cron('45 3 * * *', { name: 'db-backup-purge' })
   async scheduledPurge() {
@@ -158,6 +193,7 @@ export class BackupService {
       const row = this.repo.create({
         filename,
         file_path: filePath,
+        kind: 'database',
         trigger,
         status: 'success',
         size_bytes: String(stat.size),
@@ -178,6 +214,7 @@ export class BackupService {
         this.repo.create({
           filename,
           file_path: filePath,
+          kind: 'database',
           trigger,
           status: 'failed',
           size_bytes: '0',
@@ -192,6 +229,64 @@ export class BackupService {
       throw err;
     } finally {
       this.running = false;
+    }
+  }
+
+  /** Zips every uploaded/generated document and records it like a DB dump. */
+  private async runFiles(trigger: 'scheduled' | 'manual', actor: Actor | null) {
+    if (this.filesRunning) throw new BadRequestException('A files backup is already running');
+    this.filesRunning = true;
+    const started = Date.now();
+    await fs.mkdir(this.dir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const who = actor?.name ? `_by-${this.slug(actor.name)}` : '';
+    const filename = `erp-files_${stamp}${who}.zip`;
+    const filePath = join(this.dir, filename);
+
+    try {
+      const result = await zipDirectories(this.uploadDirs, filePath);
+      const saved = await this.repo.save(
+        this.repo.create({
+          filename,
+          file_path: filePath,
+          kind: 'files',
+          trigger,
+          status: 'success',
+          size_bytes: String(result.bytes),
+          table_count: result.files,
+          duration_ms: Date.now() - started,
+          created_by_id: actor?.id ?? null,
+          created_by_name: actor?.name ?? null,
+          drive_status: 'pending',
+          local_deleted: false,
+          error: null,
+        }),
+      );
+      this.logger.log(`Files archive written: ${filename} (${result.files} files, ${result.bytes} bytes)`);
+      return saved;
+    } catch (err) {
+      const message = (err as Error).message;
+      await fs.rm(filePath, { force: true }).catch(() => undefined);
+      await this.repo.save(
+        this.repo.create({
+          filename,
+          file_path: filePath,
+          kind: 'files',
+          trigger,
+          status: 'failed',
+          size_bytes: '0',
+          table_count: 0,
+          duration_ms: Date.now() - started,
+          created_by_id: actor?.id ?? null,
+          created_by_name: actor?.name ?? null,
+          drive_status: 'skipped',
+          error: message,
+        }),
+      );
+      throw err;
+    } finally {
+      this.filesRunning = false;
     }
   }
 
@@ -257,7 +352,11 @@ export class BackupService {
   private async uploadRow(row: DbBackup) {
     try {
       const content = await fs.readFile(row.file_path);
-      const fileId = await this.drive.upload(row.filename, content);
+      const fileId = await this.drive.upload(
+        row.filename,
+        content,
+        row.filename.endsWith('.zip') ? 'application/zip' : 'application/gzip',
+      );
       row.drive_status = 'uploaded';
       row.drive_file_id = fileId;
       row.drive_uploaded_at = new Date();
@@ -275,7 +374,7 @@ export class BackupService {
     try {
       const names = await fs.readdir(this.dir);
       const files = [];
-      for (const name of names.filter((n) => n.endsWith('.sql.gz'))) {
+      for (const name of names.filter((n) => n.endsWith('.sql.gz') || n.endsWith('.zip'))) {
         const stat = await fs.stat(join(this.dir, name));
         files.push({ name, size: stat.size, mtime: stat.mtime });
       }
