@@ -2,8 +2,11 @@ export type BackupTrigger = 'scheduled' | 'manual';
 export type BackupStatus = 'success' | 'failed';
 export type DriveStatus = 'pending' | 'uploaded' | 'skipped' | 'failed';
 
+export type BackupKind = 'database' | 'files';
+
 export interface DbBackup {
   id: string;
+  kind: BackupKind;
   filename: string;
   file_path: string;
   trigger: BackupTrigger;
@@ -30,5 +33,7 @@ export interface BackupStatusInfo {
   drive_configured: boolean;
   drive_folder_set: boolean;
   last_backup: DbBackup | null;
+  last_files_backup?: DbBackup | null;
+  upload_dirs?: string[];
   running: boolean;
 }

@@ -36,6 +36,12 @@ export class BackupController {
     return this.service.runManual({ id: req.user.id, name: req.user.name ?? req.user.email });
   }
 
+  @Post('run-files')
+  @ApiOperation({ summary: 'Zip all uploaded/generated files now and log the archive' })
+  runFiles(@Req() req: AuthedRequest) {
+    return this.service.runFilesManual({ id: req.user.id, name: req.user.name ?? req.user.email });
+  }
+
   @Post(':id/upload')
   @ApiOperation({ summary: 'Push a stored backup to Google Drive now' })
   upload(@Param('id', new ParseUUIDPipe()) id: string) {
