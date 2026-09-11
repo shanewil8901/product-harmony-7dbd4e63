@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { salesService } from "../services/sales.service";
+import { notifyApiError } from "../services/api";
 import { SalesOrderModal } from "../components/SalesOrderModal";
 import { SalesPaymentModal } from "../components/SalesPaymentModal";
 import { ConfirmDialog, PromptDialog } from "../components/Dialog";
@@ -344,7 +345,7 @@ export function SalesPage() {
                         Edit
                       </button>
                     )}
-                    {canDeleteSales && (
+                    {canDeleteSales && (o.status === "draft" || o.status === "cancelled") && (
                       <button
                         className="btn-ghost !px-2 !py-1 text-xs text-brown-600"
                         onClick={() => setDeleting(o)}
@@ -627,7 +628,9 @@ export function SalesPage() {
               toast("success", "Sales order deleted");
               void load();
             } catch (e) {
-              toast("error", e instanceof Error ? e.message : "Could not delete the order");
+              // The API layer already shows the server's explanation; this only
+              // covers anything it could not classify.
+              notifyApiError(e, "Could not delete the order");
             }
           }}
         />
