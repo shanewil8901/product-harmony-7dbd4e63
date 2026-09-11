@@ -78,6 +78,27 @@ export function BackupPage() {
     }
   };
 
+  const runFiles = async () => {
+    if (
+      !(await confirm({
+        title: 'Back up files now',
+        message: 'Zip every uploaded and generated document (vendors, customers, stock, employees) into one archive?',
+        confirmLabel: 'Create archive',
+      }))
+    )
+      return;
+    setBusy('files');
+    try {
+      const created = await backupService.runFiles();
+      toast('success', `Files archive created: ${created.filename} (${created.table_count} files)`);
+      await load();
+    } catch (e) {
+      notifyApiError(e, 'Files backup failed');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const uploadOne = async (row: DbBackup) => {
     setBusy(row.id);
     try {
@@ -116,6 +137,13 @@ export function BackupPage() {
   const cards = [
     { label: 'Local schedule', value: `Every ${status?.local_every_minutes ?? 15} min`, hint: status?.local_dir ?? '' },
     { label: 'Local files kept', value: String(status?.local_files ?? 0), hint: bytes(status?.local_bytes ?? 0) },
+    {
+      label: 'Files archive',
+      value: status?.last_files_backup ? when(status.last_files_backup.created_at) : 'Not yet run',
+      hint: status?.last_files_backup
+        ? `${status.last_files_backup.table_count} files · ${bytes(status.last_files_backup.size_bytes)}`
+        : 'Runs daily and uploads to Google Drive',
+    },
     { label: 'Retention', value: `${status?.retention_days ?? 30} days`, hint: 'Older files removed nightly' },
     {
       label: 'Google Drive',
@@ -131,8 +159,9 @@ export function BackupPage() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Database backups</h1>
           <p className="text-sm text-slate-500">
-            Automatic local snapshots every 15 minutes, a daily copy to Google Drive, and automatic
-            cleanup of files older than a month.
+            Automatic database snapshots every 15 minutes, a daily zipped archive of all uploaded
+            and generated documents, daily copies to Google Drive, and automatic cleanup of files
+            older than a month.
           </p>
         </div>
         <div className="flex gap-2">
@@ -148,7 +177,14 @@ export function BackupPage() {
             disabled={busy !== null}
             className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {busy === 'run' ? 'Backing up…' : 'Back up now'}
+            {busy === 'run' ? 'Backing up…' : 'Back up database'}
+          </button>
+          <button
+            onClick={runFiles}
+            disabled={busy !== null}
+            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {busy === 'files' ? 'Zipping…' : 'Back up files'}
           </button>
         </div>
       </div>
@@ -170,6 +206,7 @@ export function BackupPage() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3">File</th>
+              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Size</th>
@@ -181,14 +218,14 @@ export function BackupPage() {
           <tbody className="divide-y divide-slate-100">
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   Loading backups…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   No backups yet — the first automatic snapshot runs within 15 minutes.
                 </td>
               </tr>
@@ -203,6 +240,11 @@ export function BackupPage() {
                     </span>
                   )}
                   {r.error && <p className="mt-1 text-xs text-rose-600">{r.error}</p>}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`rounded-full px-2 py-0.5 text-xs ring-1 ${badge(r.kind === 'files' ? 'warn' : 'muted')}`}>
+                    {r.kind === 'files' ? 'Files' : 'Database'}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-slate-600">{when(r.created_at)}</td>
                 <td className="px-4 py-3 text-slate-600">
