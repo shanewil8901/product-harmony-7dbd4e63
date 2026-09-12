@@ -49,56 +49,54 @@ export interface ZipResult {
   files: number;
   bytes: number;
   rawBytes: number;
+  encrypted: boolean;
 }
 
-/**
- * Dependency-free deflate ZIP writer. Packs every file below `sourceDirs`
- * (each mounted under its own top-level folder inside the archive) into
- * `targetPath`. Files are read and compressed one at a time, so memory stays
- * bounded by the largest single upload.
- */
-export async function zipDirectories(
-  sourceDirs: { name: string; path: string }[],
-  targetPath: string,
-): Promise<ZipResult> {
-  const stream = createWriteStream(targetPath);
-  const write = (buf: Buffer) =>
-    new Promise<void>((res, rej) => {
-      stream.write(buf, (err) => (err ? rej(err) : res()));
-    });
+/** Legacy PKWARE (ZipCrypto) stream cipher — understood by every unzip tool. */
+class ZipCrypto {
+  private k0 = 0x12345678;
+  private k1 = 0x23456789;
+  private k2 = 0x34567890;
 
-  let offset = 0;
-  let rawBytes = 0;
-  const central: Buffer[] = [];
-  let count = 0;
+  constructor(password: string) {
+    for (const byte of Buffer.from(password, 'utf8')) this.update(byte);
+  }
 
-  for (const source of sourceDirs) {
-    const files = await walk(source.path);
-    for (const file of files) {
-      const stat = await fs.stat(file);
-      const content = await fs.readFile(file);
-      const compressed = await deflate(content);
-      const nameInZip = [source.name, ...relative(source.path, file).split(sep)].join('/');
-      const name = Buffer.from(nameInZip, 'utf8');
-      const crc = crc32(content);
-      const { time, date } = dosStamp(stat.mtime);
+  private update(byte: number) {
+    this.k0 = (CRC_TABLE[(this.k0 ^ byte) & 0xff] ^ (this.k0 >>> 8)) >>> 0;
+    this.k1 = (this.k1 + (this.k0 & 0xff)) >>> 0;
+    this.k1 = (Math.imul(this.k1, 134775813) + 1) >>> 0;
+    this.k2 = (CRC_TABLE[(this.k2 ^ (this.k1 >>> 24)) & 0xff] ^ (this.k2 >>> 8)) >>> 0;
+  }
 
-      const local = Buffer.alloc(30);
-      local.writeUInt32LE(0x04034b50, 0);
-      local.writeUInt16LE(20, 4); // version needed
-      local.writeUInt16LE(0x0800, 6); // UTF-8 names
-      local.writeUInt16LE(8, 8); // deflate
-      local.writeUInt16LE(time, 10);
-      local.writeUInt16LE(date, 12);
-      local.writeUInt32LE(crc, 14);
-      local.writeUInt32LE(compressed.length, 18);
-      local.writeUInt32LE(content.length, 22);
-      local.writeUInt16LE(name.length, 26);
-      local.writeUInt16LE(0, 28);
+  private streamByte(): number {
+    const temp = (this.k2 | 2) & 0xffff;
+    return (Math.imul(temp, temp ^ 1) >>> 8) & 0xff;
+  }
 
+  encrypt(buf: Buffer): Buffer {
+    const out = Buffer.alloc(buf.length);
+    for (let i = 0; i < buf.length; i += 1) {
+      const plain = buf[i];
+      out[i] = plain ^ this.streamByte();
+      this.update(plain);
+    }
+    return out;
+  }
+}
+
+/** 12-byte encryption header; last byte must match the CRC high byte. */
+function encryptEntry(data: Buffer, password: string, crc: number): Buffer {
+  const cipher = new ZipCrypto(password);
+  const header = Buffer.alloc(12);
+  for (let i = 0; i < 11; i += 1) header[i] = Math.floor(Math.random() * 256);
+  header[11] = (crc >>> 24) & 0xff;
+  return Buffer.concat([cipher.encrypt(header), cipher.encrypt(data)]);
+}
+...
       await write(local);
       await write(name);
-      await write(compressed);
+      await write(payload);
 
       const entry = Buffer.alloc(46);
       entry.writeUInt32LE(0x02014b50, 0);
