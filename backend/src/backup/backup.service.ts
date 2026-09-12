@@ -75,6 +75,7 @@ export class BackupService {
     return {
       local_dir: this.dir,
       upload_dirs: this.uploadDirs.map((d) => d.path),
+      files_zip_encrypted: Boolean(this.zipPassword),
       last_files_backup: lastFiles ?? null,
       local_files: localFiles.length,
       local_bytes: totalBytes,
@@ -248,7 +249,7 @@ export class BackupService {
     const filePath = join(this.dir, filename);
 
     try {
-      const result = await zipDirectories(this.uploadDirs, filePath);
+      const result = await zipDirectories(this.uploadDirs, filePath, this.zipPassword);
       const saved = await this.repo.save(
         this.repo.create({
           filename,
