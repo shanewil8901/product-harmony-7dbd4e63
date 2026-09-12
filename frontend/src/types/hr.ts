@@ -302,6 +302,7 @@ export interface GeneratePayslipPayload {
 /** Non-sensitive employee directory entry for the self check-in screen. */
 export interface EmployeeDirectoryEntry {
   id: string;
+  user_id?: string | null;
   employee_code: string;
   full_name: string;
   job_title: string;
