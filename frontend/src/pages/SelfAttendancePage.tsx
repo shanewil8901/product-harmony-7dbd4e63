@@ -3,6 +3,7 @@ import { Combobox } from '../components/Combobox';
 import { selfAttendanceService } from '../services/hr.service';
 import { toast } from '../lib/toast';
 import { notifyApiError } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import type { AttendanceDayState, EmployeeDirectoryEntry } from '../types/hr';
 import { ATTENDANCE_LABEL } from '../types/hr';
 
@@ -35,7 +36,10 @@ export function SelfAttendancePage() {
   useEffect(() => {
     void (async () => {
       try {
-        setDirectory(await selfAttendanceService.directory());
+        const list = await selfAttendanceService.directory();
+        setDirectory(list);
+        const mine = user ? list.find((d) => d.user_id === user.id) : undefined;
+        if (mine) setEmployeeId(mine.id);
       } catch (e) {
         notifyApiError(e, 'Could not load the employee list');
       } finally {
