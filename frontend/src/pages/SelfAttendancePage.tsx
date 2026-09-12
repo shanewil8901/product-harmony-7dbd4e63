@@ -41,14 +41,17 @@ export function SelfAttendancePage() {
         const list = await selfAttendanceService.directory();
         setDirectory(list);
         const mine = user ? list.find((d) => d.user_id === user.id) : undefined;
-        if (mine) setEmployeeId(mine.id);
+        if (mine) {
+          setEmployeeId(mine.id);
+          setLocked(true);
+        }
       } catch (e) {
         notifyApiError(e, 'Could not load the employee list');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user]);
 
   const selected = useMemo(
     () => directory.find((d) => d.id === employeeId) ?? null,
