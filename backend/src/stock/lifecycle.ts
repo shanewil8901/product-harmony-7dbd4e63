@@ -240,6 +240,9 @@ export const STATUS_PROGRESS: Record<StockStatus, number> = {
 /** Terminal documents are always permitted — they close the row, not rewind it. */
 export function isForwardStage(docType: StockDocType, status: StockStatus) {
   if (docType === 'write_off' || docType === 'cancellation') return true;
+  // The Inquiry is generated automatically the moment a stock row is created,
+  // when the row already sits at "inquiry_sent" — that is not a rewind.
+  if (docType === 'inquiry') return true;
   const target = STAGE_SEQUENCE.indexOf(docType);
   if (target < 0) return true;
   return target > STATUS_PROGRESS[status];

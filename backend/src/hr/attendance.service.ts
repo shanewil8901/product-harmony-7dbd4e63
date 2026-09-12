@@ -120,6 +120,7 @@ export class AttendanceService {
       .filter((e) => e.employment_status !== 'terminated')
       .map((e) => ({
         id: e.id,
+        user_id: e.user_id ?? null,
         employee_code: e.employee_code,
         full_name: `${e.first_name} ${e.last_name}`.trim(),
         job_title: e.job_title,

@@ -3,6 +3,7 @@ import { Combobox } from '../components/Combobox';
 import { selfAttendanceService } from '../services/hr.service';
 import { toast } from '../lib/toast';
 import { notifyApiError } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import type { AttendanceDayState, EmployeeDirectoryEntry } from '../types/hr';
 import { ATTENDANCE_LABEL } from '../types/hr';
 
@@ -31,18 +32,26 @@ export function SelfAttendancePage() {
   const [state, setState] = useState<AttendanceDayState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     void (async () => {
       try {
-        setDirectory(await selfAttendanceService.directory());
+        const list = await selfAttendanceService.directory();
+        setDirectory(list);
+        const mine = user ? list.find((d) => d.user_id === user.id) : undefined;
+        if (mine) {
+          setEmployeeId(mine.id);
+          setLocked(true);
+        }
       } catch (e) {
         notifyApiError(e, 'Could not load the employee list');
       } finally {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [user]);
 
   const selected = useMemo(
     () => directory.find((d) => d.id === employeeId) ?? null,
@@ -120,14 +129,23 @@ export function SelfAttendancePage() {
       <div className="card p-5 space-y-4">
         <div>
           <label className="label">Employee ID</label>
-          <Combobox
-            options={options}
-            value={employeeId}
-            onChange={setEmployeeId}
-            allowClear
-            clearLabel="Clear"
-            placeholder={loading ? 'Loading…' : 'Type your employee ID or name…'}
-          />
+          {locked ? (
+            <input
+              className="input bg-paper-warm"
+              value={selected ? `${selected.employee_code} — ${selected.full_name}` : ''}
+              readOnly
+              disabled
+            />
+          ) : (
+            <Combobox
+              options={options}
+              value={employeeId}
+              onChange={setEmployeeId}
+              allowClear
+              clearLabel="Clear"
+              placeholder={loading ? 'Loading…' : 'Type your employee ID or name…'}
+            />
+          )}
         </div>
 
         {selected && (
