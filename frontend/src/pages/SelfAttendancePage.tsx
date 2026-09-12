@@ -32,6 +32,8 @@ export function SelfAttendancePage() {
   const [state, setState] = useState<AttendanceDayState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     void (async () => {
