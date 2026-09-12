@@ -129,14 +129,23 @@ export function SelfAttendancePage() {
       <div className="card p-5 space-y-4">
         <div>
           <label className="label">Employee ID</label>
-          <Combobox
-            options={options}
-            value={employeeId}
-            onChange={setEmployeeId}
-            allowClear
-            clearLabel="Clear"
-            placeholder={loading ? 'Loading…' : 'Type your employee ID or name…'}
-          />
+          {locked ? (
+            <input
+              className="input bg-paper-warm"
+              value={selected ? `${selected.employee_code} — ${selected.full_name}` : ''}
+              readOnly
+              disabled
+            />
+          ) : (
+            <Combobox
+              options={options}
+              value={employeeId}
+              onChange={setEmployeeId}
+              allowClear
+              clearLabel="Clear"
+              placeholder={loading ? 'Loading…' : 'Type your employee ID or name…'}
+            />
+          )}
         </div>
 
         {selected && (
